@@ -1,0 +1,1694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repair Tracks — Dealer Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   Repair Tracks — one working prototype.
+
+   A single phone with a real navigation stack. Every screen in the dealer path
+   is reachable from inside it, exactly as in the app:
+
+     Repair Jobs  →  ＋ New job  →  Dealer Batch  →  the drop-off
+                  →  a device    →  the move       →  handover receipt
+
+   Colours, radii, type and copy are lifted from design.dart, jobs_screen.dart,
+   add_dealer_batch_screen.dart, batch_detail_screen.dart, job_detail_screen.dart,
+   job_status.dart and batch_receipt_data.dart. The phone is LIGHT ONLY because
+   the app runs themeMode: ThemeMode.light — only the page around it is themed.
+   ========================================================================= */
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+
+:root{
+  --stage:#07211F; --stage2:#0F302D; --stage-line:#1B4643;
+  --stage-ink:#EAF3F1; --stage-ink2:#9DBAB6; --stage-ink3:#6E918D;
+  --stage-accent:#C9F003; --go-ink:#0A2018;
+  --scale:1;
+}
+@media (prefers-color-scheme: light){
+  :root{ --stage:#ECF2F1; --stage2:#FFFFFF; --stage-line:#D2E0DE;
+    --stage-ink:#07211F; --stage-ink2:#456A66; --stage-ink3:#6E918D;
+    --stage-accent:#4C6B00; --go-ink:#FFFFFF; }
+}
+:root[data-theme="dark"]{ --stage:#07211F; --stage2:#0F302D; --stage-line:#1B4643;
+  --stage-ink:#EAF3F1; --stage-ink2:#9DBAB6; --stage-ink3:#6E918D;
+  --stage-accent:#C9F003; --go-ink:#0A2018; }
+:root[data-theme="light"]{ --stage:#ECF2F1; --stage2:#FFFFFF; --stage-line:#D2E0DE;
+  --stage-ink:#07211F; --stage-ink2:#456A66; --stage-ink3:#6E918D;
+  --stage-accent:#4C6B00; --go-ink:#FFFFFF; }
+
+body{
+  background:
+    radial-gradient(900px 600px at 78% -10%, rgba(62,130,128,.24), transparent 60%),
+    radial-gradient(700px 460px at 4% 30%, rgba(201,240,3,.06), transparent 62%),
+    var(--stage);
+  color:var(--stage-ink);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+
+.wrap{min-height:100vh; display:grid; place-items:center; padding:14px}
+
+/* ── The device ─────────────────────────────────────────────────────────── */
+.bezel{
+  width:calc(390px * var(--scale) + 18px); padding:9px;
+  border-radius:calc(46px * var(--scale) + 9px);
+  background:linear-gradient(155deg,#1E4240,#0A2422);
+  box-shadow:0 34px 70px -20px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.08) inset;
+}
+:root[data-theme="light"] .bezel{background:linear-gradient(155deg,#C3D5D3,#9CB4B1)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .bezel{background:linear-gradient(155deg,#C3D5D3,#9CB4B1)}}
+.viewport{
+  width:calc(390px * var(--scale)); height:calc(844px * var(--scale));
+  border-radius:calc(46px * var(--scale)); overflow:hidden; position:relative; background:#fff;
+}
+.ph{
+  --brand:#005655; --brand-deep:#003D3C; --brand-soft:#3E8280; --brand-tint:#E6EEEE; --accent:#C9F003;
+  --ink:#0B1220; --ink2:#55606E; --ink3:#8A94A3; --line:#E4E8EE; --line2:#EFF2F6;
+  --surface:#FFFFFF; --surface2:#F8FAFC; --canvas:#F4F6F9; --sunken:#F1F4F8;
+  --danger:#BE123C; --danger-tint:#FEF2F4; --warn:#C2410C; --warn-tint:#FFF7ED;
+  --good:#047857; --good-tint:#ECFDF5;
+  --l-bg:#F0F4F8; --l-ink:#0F172A; --l-body:#475569; --l-mute:#64748B; --l-label:#94A3B8;
+  --l-hint:#CBD5E1; --l-border:#E2E8F0; --l-fill:#F8FAFC; --l-seg:#F1F5F9; --l-red:#EF4444;
+  --l-amber:#F59E0B; --l-blue:#3B82F6; --l-violet:#8B5CF6; --l-emerald:#10B981; --l-divider:#F5F5F5;
+  --sh-card:0 1px 2px rgba(11,18,32,.039), 0 2px 8px rgba(11,18,32,.051);
+  --sh-dock:0 -6px 20px rgba(11,18,32,.078);
+  width:390px; height:844px; transform:scale(var(--scale)); transform-origin:top left;
+  position:relative; overflow:hidden; display:flex; flex-direction:column;
+  background:var(--canvas); font-family:'Inter',system-ui,'Segoe UI',sans-serif;
+}
+#screen{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden}
+
+/* ── App chrome ─────────────────────────────────────────────────────────── */
+.band{background:linear-gradient(135deg,#003D3C 0%,#005655 52%,#3E8280 100%); flex:0 0 auto; padding-top:14px}
+.hrow{display:flex; align-items:center; padding:4px 9px 12px}
+.htitle{flex:1; min-width:0; padding-left:4px}
+.htitle b{display:block; font-size:20px; font-weight:700; letter-spacing:-.4px; color:#fff;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.htitle span{display:block; font-size:11.5px; font-weight:500; color:rgba(255,255,255,.72); margin-top:2px;
+  font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.hact{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;background:none;border:0;padding:0;cursor:pointer}
+.hact i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18)}
+.hact svg{width:18px;height:18px;fill:#fff}
+.hact.fill i{background:var(--accent); border-color:var(--accent)}
+.hact.fill svg{fill:var(--brand-deep)}
+.hact:focus-visible i{outline:2px solid var(--accent); outline-offset:2px}
+.search{
+  margin:0 9px 12px; height:40px; border-radius:12px; display:flex; align-items:center; gap:9px;
+  padding:0 12px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18);
+}
+.search svg{width:17px;height:17px;fill:rgba(255,255,255,.7);flex:0 0 17px}
+.search input{flex:1; min-width:0; background:none; border:0; outline:none; font:inherit;
+  font-size:13.5px; font-weight:500; color:#fff}
+.search input::placeholder{color:rgba(255,255,255,.55)}
+
+.chips{height:54px; flex:0 0 auto; background:var(--surface); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; overflow-x:auto; gap:8px; padding:0 14px}
+.chips::-webkit-scrollbar{height:0}
+.chip{
+  height:36px; flex:0 0 auto; border-radius:999px; padding:0 14px; cursor:pointer; font:inherit;
+  display:inline-flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line);
+  transition:background .18s, border-color .18s;
+}
+.chip svg{width:15px;height:15px}
+.chip .lb{font-size:12.5px;font-weight:600;letter-spacing:-.1px;color:var(--ink2)}
+.chip .ct{font-size:11.5px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+
+.scroll{flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden}
+.scroll::-webkit-scrollbar{width:0}
+.list{padding:12px 14px 28px}
+
+.dayhead{height:32px; display:flex; align-items:flex-end; gap:8px; padding:0 0 6px; margin-top:4px}
+.dayhead .t{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.dayhead .r{flex:1; height:1px}
+.dayhead .c{font-size:11.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.dayhead svg{width:12px;height:12px;fill:var(--danger)}
+
+.tcard{
+  width:100%; text-align:left; font:inherit; cursor:pointer; display:flex; gap:10px;
+  align-items:flex-start; padding:10px 10px 9px; margin-bottom:8px; border-radius:16px;
+  transition:transform .11s ease-out;
+}
+.tcard:active{transform:scale(.985)}
+.tcard:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.lead{width:36px;height:36px;flex:0 0 36px;border-radius:11px;display:grid;place-items:center}
+.lead svg{width:18px;height:18px}
+.tbody{flex:1; min-width:0}
+.trow1{display:flex; align-items:center; gap:8px}
+.tname{display:block; flex:1; min-width:0; font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.twho{display:block; font-size:11.5px;font-weight:600;letter-spacing:-.1px;color:var(--ink2);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rule{display:block; height:1px;margin:8px 0 7px;background-image:linear-gradient(to right,currentColor 3px,transparent 3px);
+  background-size:6px 1px; background-repeat:repeat-x}
+.trow2{display:flex; align-items:center; gap:6px}
+.ttrace{display:block; flex:1; min-width:0; font-size:11.5px;font-weight:500;color:var(--ink3);
+  font-variant-numeric:tabular-nums; overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mpill{flex:0 0 auto; padding:3px 8px; border-radius:8px; font-size:11.5px;font-weight:700;
+  letter-spacing:-.3px; font-variant-numeric:tabular-nums; white-space:nowrap}
+.oflag{flex:0 0 auto; padding:2px 6px; border-radius:6px; background:var(--danger-tint); color:var(--danger);
+  font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase; white-space:nowrap}
+.pill{display:inline-block; padding:3px 7px; border-radius:999px; font-size:10.5px;font-weight:700;
+  letter-spacing:-.05px; white-space:nowrap}
+.bmeter{display:flex; height:5px; border-radius:3px; overflow:hidden; margin:8px 0 7px}
+
+.card{background:var(--surface); border-radius:16px; border:1px solid var(--line); box-shadow:var(--sh-card)}
+.seclabel{display:flex; align-items:center; gap:8px; padding:0 2px 7px;
+  font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink3)}
+.seclabel .grow{flex:1}
+.seclabel .cnt{font-size:11.5px;font-weight:500;letter-spacing:0;color:var(--ink3);font-variant-numeric:tabular-nums}
+.money{font-variant-numeric:tabular-nums;letter-spacing:-.3px;font-weight:700}
+.empty{padding:36px 36px 60px; text-align:center}
+.empty .tile{width:60px;height:60px;margin:0 auto;border-radius:18px;background:var(--sunken);display:grid;place-items:center}
+.empty .tile svg{width:27px;height:27px;fill:var(--ink3)}
+.empty b{display:block; font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--ink);margin-top:16px}
+.empty p{margin:5px 0 0; font-size:13px;font-weight:500;line-height:1.45;color:var(--ink2)}
+
+.dock{flex:0 0 auto; background:var(--surface); border-top:1px solid var(--line);
+  box-shadow:var(--sh-dock); padding:12px 14px 16px}
+.btn{width:100%; height:46px; border:0; border-radius:12px; cursor:pointer; background:var(--brand);
+  color:#fff; font:inherit; font-size:14px;font-weight:700;letter-spacing:-.2px;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;
+  transition:filter .14s, transform .1s}
+.btn svg{width:17px;height:17px;fill:currentColor}
+.btn:hover{filter:brightness(1.08)} .btn:active{transform:scale(.985)}
+.btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.btn.sec{background:var(--surface); color:var(--ink); border:1px solid var(--line)}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* intake screen */
+.ib-head{display:flex; align-items:flex-start; padding:8px 20px 20px 8px}
+.ib-back{background:none;border:0;padding:8px;cursor:pointer;display:grid;place-items:center}
+.ib-back svg{width:20px;height:20px;fill:#fff}
+.ib-ttl{flex:1; min-width:0; padding:6px 0 0 4px}
+.ib-ttl b{display:block;font-size:20px;font-weight:800;letter-spacing:-.3px;color:#fff}
+.ib-ttl span{display:block;font-size:12px;color:rgba(255,255,255,.6);margin-top:1px}
+.chip-demo{align-self:center;display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:12px;
+  cursor:pointer;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);
+  font:inherit;font-size:12px;font-weight:700;color:#fff;margin-right:8px}
+.chip-demo svg{width:15px;height:15px;fill:#fff}
+.chip-count{align-self:center;padding:7px 12px;border-radius:12px;background:rgba(201,240,3,.15);
+  border:1px solid rgba(201,240,3,.30);font-size:12px;font-weight:800;color:var(--accent);white-space:nowrap}
+.ib-card{background:#fff;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,.05);margin-bottom:14px}
+.ib-h{display:flex;align-items:center;padding:16px 16px 0}
+.ib-badge{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:900;margin-right:10px}
+.ib-h .ico{width:16px;height:16px;margin-right:6px;flex:0 0 16px}
+.ib-h b{font-size:14px;font-weight:800;color:var(--l-ink);letter-spacing:-.1px}
+.ib-h .grow{flex:1}
+.ib-rule{height:1px;background:var(--l-divider);margin:10px 16px 2px}
+.ib-b{padding:12px 16px 16px}
+.lnk{background:none;border:0;padding:0;cursor:pointer;font:inherit;font-size:13px;font-weight:700;
+  color:var(--brand);display:inline-flex;align-items:center;gap:6px;min-height:32px}
+.lnk svg{width:18px;height:18px;fill:currentColor}
+.lnk[disabled]{color:var(--l-hint);cursor:default}
+.fld{width:100%;display:flex;align-items:center;gap:12px;background:var(--l-fill);border:1px solid var(--l-border);
+  border-radius:12px;padding:11px 14px;cursor:pointer;text-align:left;font:inherit;color:var(--l-ink)}
+.fld:focus-visible{outline:none;border-color:var(--brand)}
+.fld .ico{width:17px;height:17px;flex:0 0 17px;fill:var(--brand)}
+.fld .body{flex:1;min-width:0}
+.fld .lab{display:block;font-size:12px;color:var(--l-label)}
+.fld .lab.up{font-size:13px}
+.fld .val{display:block;font-size:14px;color:var(--l-ink);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fld .hint{display:block;font-size:12.5px;color:var(--l-hint);margin-top:2px}
+.fld .caret{width:20px;height:20px;flex:0 0 20px;fill:var(--l-label)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+.tag{background:rgba(0,86,85,.10);color:var(--brand);border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600}
+.inp{width:100%;font:inherit;font-size:14px;color:var(--l-ink);background:#fff;border:1px solid var(--l-border);
+  border-radius:10px;padding:12px;outline:none}
+.inp::placeholder{color:var(--l-hint)}
+.inp:focus{border-color:var(--brand)}
+.two{display:flex;gap:8px} .two>*{flex:1;min-width:0}
+.stack>*+*{margin-top:10px}
+.grp-lab{font-size:12px;font-weight:700;color:var(--l-label);margin-bottom:8px}
+.segs{display:flex;gap:8px}
+.seg{flex:1;border-radius:12px;padding:11px 0;cursor:pointer;font:inherit;font-size:13px;font-weight:700;
+  text-align:center;background:var(--l-seg);border:1px solid var(--l-border);color:var(--l-body);
+  transition:background .18s,color .18s,box-shadow .18s,border-color .18s}
+.dev{background:var(--l-fill);border:1px solid var(--l-border);border-radius:14px;padding:8px 10px 10px;margin-bottom:10px}
+.dev.err{background:#FEF2F2;border-color:var(--l-red);border-width:1.5px}
+.dev-bar{display:flex;align-items:center;margin-bottom:8px}
+.dev-n{width:22px;height:22px;border-radius:7px;background:var(--brand);color:#fff;display:grid;place-items:center;
+  font-size:11px;font-weight:800}
+.dev.err .dev-n{background:var(--l-red)}
+.dev-bar .grow{flex:1}
+.iconbtn{background:none;border:0;padding:5px;cursor:pointer;display:grid;place-items:center;border-radius:8px}
+.iconbtn svg{width:17px;height:17px}
+.scanbtn{background:rgba(0,86,85,.10);border:0;border-radius:10px;padding:6px;cursor:pointer;display:grid;place-items:center}
+.scanbtn svg{width:18px;height:18px;fill:var(--brand)}
+.more-btn{background:none;border:0;padding:0;cursor:pointer;font:inherit;font-size:12px;font-weight:600;
+  color:var(--l-mute);display:inline-flex;align-items:center;gap:6px;min-height:30px;margin-top:8px}
+.more-btn svg{width:18px;height:18px;fill:currentColor}
+.cta{width:100%;height:56px;border:0;border-radius:18px;cursor:pointer;font:inherit;font-size:16px;
+  font-weight:800;letter-spacing:.2px;color:#fff;background:linear-gradient(135deg,#003D3C,#005655);
+  box-shadow:0 6px 18px rgba(0,86,85,.45);display:inline-flex;align-items:center;justify-content:center;
+  gap:10px;margin-top:28px}
+.cta svg{width:20px;height:20px;fill:var(--accent)}
+.cta:hover{filter:brightness(1.06)}
+
+/* batch detail */
+.rollup{padding:12px 13px}
+.ru-top{display:flex;align-items:flex-end}
+.ru-l{flex:1}
+.ru-l .k,.ru-r .k{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3)}
+.ru-l .v{font-size:27px;font-weight:700;letter-spacing:-1px;color:var(--ink);margin-top:2px;
+  font-variant-numeric:tabular-nums;line-height:1.05}
+.ru-r{text-align:right}
+.ru-r .v{font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--warn);margin-top:4px;font-variant-numeric:tabular-nums}
+.meter{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:12px}
+.legend{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink2);line-height:1.4}
+.legend i{width:7px;height:7px;border-radius:50%;display:block}
+.drow{display:flex;align-items:flex-start;width:100%;text-align:left;padding:9px 8px 9px 11px;margin-bottom:8px;
+  cursor:pointer;font:inherit;background:var(--surface);border-radius:16px;border:1px solid var(--line);
+  box-shadow:var(--sh-card);overflow:hidden;position:relative;transition:transform .11s ease-out}
+.drow:active{transform:scale(.985)}
+.drow:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.drow.late::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--danger)}
+.drow .idx{width:28px;height:28px;flex:0 0 28px;border-radius:8px;background:var(--sunken);display:grid;
+  place-items:center;font-size:11.5px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums;margin-right:10px}
+.drow .mid{flex:1;min-width:0}
+.drow .nm{display:block; font-size:14px;font-weight:700;letter-spacing:-.2px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .id{display:block; font-size:11.5px;font-weight:500;color:var(--ink3);margin-top:3px;font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .flt{display:block; font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .mn{display:flex;align-items:center;gap:8px;margin-top:5px}
+.drow .mn .m{font-size:12px}
+.drow .mn .due{font-size:11.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.drow .rt{display:flex;align-items:center;margin-left:8px}
+.drow .rt svg{width:18px;height:18px;fill:var(--ink3)}
+
+/* job detail */
+.hero{padding:14px 14px 12px;margin-bottom:14px}
+.hero .k{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3)}
+.hero .amt{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:3px}
+.hero .fig{font-size:27px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.hero hr{border:0;border-top:1px solid var(--line2);margin:12px 0 11px}
+.phases{display:flex;align-items:center}
+.phases .node{display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 auto}
+.phases .dot{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.phases .node.on .dot{box-shadow:0 0 0 3.5px rgba(0,86,85,.18)}
+.phases .lb{font-size:10.5px;font-weight:500;color:var(--ink3)}
+.phases .node.on .lb{font-weight:700;color:var(--ink2)}
+.phases .bar{flex:1;height:2px;background:var(--line);margin:0 6px;position:relative;top:-9px}
+.panel{padding:4px 13px 8px;margin-bottom:14px}
+.kv{display:flex;align-items:center;gap:10px;min-height:42px;padding:0 2px;border-top:1px solid var(--line2)}
+.kv:first-child{border-top:0}
+.kv .k{font-size:13px;font-weight:500;color:var(--ink2);flex:1}
+.kv .v{font-size:13px;font-weight:600;letter-spacing:-.1px;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.kv .v.strong{font-weight:800}
+.notice{display:flex;gap:9px;padding:10px 12px;border-radius:12px;margin-bottom:14px;font-size:12px;line-height:1.45}
+.notice svg{width:16px;height:16px;fill:currentColor;flex:0 0 16px;margin-top:1px}
+.notice b{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.1px;margin-bottom:2px}
+.notice.danger{background:var(--danger-tint);color:var(--danger)}
+.notice.warn{background:var(--warn-tint);color:var(--warn)}
+.notice.good{background:var(--good-tint);color:var(--good)}
+.notice.info{background:var(--brand-tint);color:var(--brand)}
+.cap-lab{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);
+  margin-bottom:9px;display:block}
+.pair{display:flex;gap:10px} .pair>*{flex:1}
+.actbtn{width:100%;border:0;border-radius:12px;cursor:pointer;font:inherit;padding:11px 14px;
+  display:flex;align-items:center;gap:10px;text-align:left;background:var(--brand);color:#fff}
+.actbtn svg{width:18px;height:18px;fill:currentColor;flex:0 0 18px}
+.actbtn .lb{flex:1}
+.actbtn .lb b{display:block;font-size:14px;font-weight:700;letter-spacing:-.2px}
+.actbtn .lb span{display:block;font-size:11.5px;font-weight:500;opacity:.82;margin-top:1px}
+.actbtn.good{background:var(--good)} .actbtn.bad{background:var(--danger)}
+.actbtn.quiet{background:var(--sunken);color:var(--ink);border:1px solid var(--line)}
+.actbtn.quiet .lb span{opacity:1;color:var(--ink3)}
+.morelink{background:none;border:0;padding:8px 0 0;cursor:pointer;font:inherit;width:100%;
+  font-size:12px;font-weight:600;color:var(--ink3);text-align:center}
+.well{background:var(--sunken);border:1px solid var(--line);border-radius:12px;padding:12px}
+.well p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.45;text-align:center}
+.slide{position:relative;height:56px;border-radius:28px;background:var(--brand);
+  box-shadow:0 4px 12px rgba(0,86,85,.28);overflow:hidden;user-select:none;touch-action:none}
+.slide .lbl{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  font-size:15px;font-weight:700;letter-spacing:-.1px;color:#fff;padding:0 56px}
+.slide .arrows{position:absolute;right:22px;top:50%;transform:translateY(-50%);pointer-events:none;
+  color:rgba(255,255,255,.55);font-size:15px;font-weight:700;letter-spacing:-2px}
+.slide .knob{position:absolute;left:4px;top:4px;width:48px;height:48px;border-radius:50%;background:#fff;
+  display:grid;place-items:center;cursor:grab}
+.slide .knob svg{width:20px;height:20px;fill:var(--brand)}
+
+/* sheets + toast */
+.scrim{position:absolute;inset:0;background:rgba(11,18,32,.42);z-index:20;display:flex;align-items:flex-end;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{width:100%;max-height:88%;background:var(--surface);border-radius:22px 22px 0 0;display:flex;
+  flex-direction:column;transform:translateY(16px);transition:transform .22s cubic-bezier(.2,.8,.3,1)}
+.scrim.on .sheet{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 4px}
+.sheet-h{padding:6px 18px 12px;border-bottom:1px solid var(--line2);display:flex;align-items:flex-start;gap:10px}
+.sheet-h .g{flex:1;min-width:0}
+.sheet-h b{display:block;font-size:17px;font-weight:700;letter-spacing:-.45px;color:var(--ink);line-height:1.15}
+.sheet-h span{display:block;font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.4}
+.sheet-b{padding:14px 18px 6px;overflow-y:auto}
+.sheet-f{padding:12px 18px 18px;border-top:1px solid var(--line2)}
+.flab{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.fhelp{display:block;font-size:11.5px;color:var(--ink3);margin-top:6px;line-height:1.4}
+.finput{width:100%;font:inherit;font-size:15px;font-weight:700;color:var(--ink);background:var(--sunken);
+  border:1px solid var(--line);border-radius:12px;padding:12px 14px;outline:none;font-variant-numeric:tabular-nums}
+.finput:focus{border-color:var(--brand)}
+.collect{border-radius:14px;padding:14px;margin-top:14px;background:linear-gradient(135deg,#003D3C,#005655);color:#fff}
+.collect .k{font-size:10px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.72)}
+.collect .v{font-size:27px;font-weight:700;letter-spacing:-1px;color:var(--accent);font-variant-numeric:tabular-nums;margin-top:2px}
+.collect .n{font-size:11.5px;color:rgba(255,255,255,.72);margin-top:4px;line-height:1.4}
+.modes{display:flex;gap:8px;margin-top:14px}
+.mode{flex:1;border-radius:10px;padding:9px 0;cursor:pointer;font:inherit;font-size:12.5px;font-weight:700;
+  text-align:center;background:#F1F5F9;border:1px solid var(--line);color:var(--ink2)}
+.mode[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.optrow{width:100%;display:flex;align-items:center;gap:14px;padding:12px 20px;background:none;border:0;
+  cursor:pointer;font:inherit;text-align:left}
+.optbox{width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center}
+.optbox svg{width:14px;height:14px;fill:#fff}
+/* one row per device inside a bulk sheet — the batch is the gesture, the
+   device is still where the amount lands */
+.brow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2)}
+.brow:first-child{border-top:0}
+.bidx{width:22px;height:22px;flex:0 0 22px;border-radius:7px;background:var(--sunken);display:grid;
+  place-items:center;font-size:11px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+.bname{flex:1;min-width:0}
+.bname b{display:block;font-size:13px;font-weight:700;letter-spacing:-.2px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bname small{display:block;font-size:10.5px;color:var(--ink3);font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bamt{width:88px;flex:0 0 88px;font:inherit;font-size:13.5px;font-weight:700;text-align:right;
+  color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:10px;
+  padding:8px 10px;outline:none;font-variant-numeric:tabular-nums}
+.bamt:focus{border-color:var(--brand)}
+.bx{flex:0 0 auto;background:none;border:0;padding:5px;cursor:pointer;border-radius:8px}
+.bx svg{width:18px;height:18px;fill:var(--ink3)}
+.bx[aria-pressed="true"] svg{fill:var(--danger)}
+.brow.off .bname b,.brow.off .bname small{opacity:.45}
+.brow.off .bamt{opacity:.35}
+.btot{display:flex;justify-content:space-between;align-items:center;padding:12px 0 2px;
+  border-top:1px solid var(--line);margin-top:8px}
+.btot .k{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--ink2)}
+.btot .v{font-size:18px;font-weight:700;letter-spacing:-.3px;color:var(--ink);font-variant-numeric:tabular-nums}
+.toast{position:absolute;left:12px;right:12px;bottom:12px;z-index:30;border-radius:12px;padding:12px 14px;
+  color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;
+  box-shadow:0 3px 5px -1px rgba(0,0,0,.2),0 6px 10px rgba(0,0,0,.14);
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.on{opacity:1;transform:none}
+.toast svg{width:18px;height:18px;fill:currentColor;flex:0 0 18px}
+
+/* receipt */
+.rc{background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-card)}
+.rc-h{background:linear-gradient(135deg,#003D3C,#005655);padding:16px;color:#fff}
+.rc-h .shop{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.rc-h .addr{font-size:11px;color:rgba(255,255,255,.72);margin-top:2px;line-height:1.4}
+.rc-h .chip2{display:inline-block;margin-top:10px;padding:5px 10px;border-radius:8px;
+  background:rgba(201,240,3,.16);color:var(--accent);font-size:11px;font-weight:900;letter-spacing:.5px}
+.rc-h .no{float:right;font-size:11.5px;font-weight:700;margin-top:14px;font-variant-numeric:tabular-nums}
+.rc-meta{display:flex;flex-wrap:wrap;padding:12px 16px 4px;gap:10px 0}
+.rc-meta div{flex:1 1 50%}
+.rc-meta .k{font-size:9.5px;font-weight:700;letter-spacing:.8px;color:var(--ink3)}
+.rc-meta .v{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:2px;font-variant-numeric:tabular-nums}
+.rc-meta .v.sm{font-weight:500;font-size:12px;color:var(--ink2)}
+.rc-sec{font-size:9.5px;font-weight:700;letter-spacing:.8px;color:var(--ink3);padding:12px 16px 6px}
+.rc-dev{display:flex;gap:9px;padding:8px 10px;margin:0 16px 6px;background:var(--sunken);border-radius:10px}
+.rc-dev .n{font-size:11px;font-weight:700;color:var(--ink3);font-variant-numeric:tabular-nums;flex:0 0 14px}
+.rc-dev .b{flex:1;min-width:0}
+.rc-dev .t{display:block; font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:-.1px}
+.rc-dev .s{display:block; font-size:10.5px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-dev .a{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rc-tot{padding:8px 16px 0}
+.rc-tot .r{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:12.5px}
+.rc-tot .r .k{color:var(--ink2)} .rc-tot .r .v{font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.rc-tot .r.mut .k,.rc-tot .r.mut .v{color:var(--ink2);font-weight:500}
+.rc-tot hr{border:0;border-top:1px solid var(--line);margin:8px 0}
+.rc-tot .r.big .k{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--ink)}
+.rc-tot .r.big .v{font-size:16px;letter-spacing:-.3px}
+.stamp{margin:12px 16px 0;padding:10px 12px;border-radius:12px;text-align:center;font-size:13px;
+  font-weight:900;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+.stamp-sub{margin:6px 16px 0;font-size:11px;font-weight:600;color:var(--ink2);text-align:center;line-height:1.35}
+.rc-f{margin-top:14px;background:var(--surface2);border-top:1px solid var(--line);padding:14px 20px 16px;
+  font-size:11.5px;font-weight:600;color:var(--ink2);line-height:1.45}
+
+@media (prefers-reduced-motion: reduce){ *{transition-duration:.001ms !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bezel"><div class="viewport"><div class="ph">
+    <div id="screen"></div>
+    <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+    <div class="toast" id="toast"></div>
+  </div></div></div>
+
+</div>
+
+<script>
+"use strict";
+/* ═══ 1 · Lifecycle, mirrored from utils/job_status.dart ═══════════════════ */
+const ST = {
+  pending:          {label:'Pending',        c:'#F59E0B', ink:'#8F6406', phase:0, icon:'hour'},
+  in_progress:      {label:'In Progress',    c:'#3B82F6', ink:'#1D4ED8', phase:0, icon:'build'},
+  waiting_parts:    {label:'Waiting Parts',  c:'#8B5CF6', ink:'#6D28D9', phase:0, icon:'parts'},
+  completed:        {label:'Repaired',       c:'#10B981', ink:'#047857', phase:1, icon:'check'},
+  unrepairable:     {label:'Not Repairable', c:'#E11D48', ink:'#BE123C', phase:1, icon:'block'},
+  out_for_delivery: {label:'Handover',       c:'#FF6B2B', ink:'#BE400C', phase:2, icon:'ship'},
+  delivered:        {label:'Dispatched',     c:'#005655', ink:'#00514F', phase:2, icon:'hand'},
+  returned:         {label:'Returned',       c:'#9F1239', ink:'#9F1239', phase:2, icon:'ret'},
+  cancelled:        {label:'Cancelled',      c:'#64748B', ink:'#475569', phase:2, icon:'cancel'},
+};
+const PHASES = ['Received','Repair','Handover'];
+const isClosed = s => s==='delivered' || s==='returned' || s==='cancelled';
+
+const ICON = {
+  build:'M22 19 13.4 10.4a5 5 0 0 0-6.6-6.2l3 3-2.2 2.2-3-3a5 5 0 0 0 6.2 6.6L19 21z',
+  parts:'M20 6h-3V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4v14h16zM9 4h6v2H9z',
+  check:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8z',
+  block:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 9h10v2H7z',
+  ship:'M20 8h-3V4H3v13h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-5zM6 18.5A1.5 1.5 0 1 1 7.5 17 1.5 1.5 0 0 1 6 18.5zm12 0a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zM17 12V9.5h2.5l1.9 2.5z',
+  hand:'M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm-6 20a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm2.5-4L10 13.5l1.4-1.4 2.1 2.1 4.6-4.6L19.5 11z',
+  hour:'M6 2v6l4 4-4 4v6h12v-6l-4-4 4-4V2zm10 15.5V20H8v-2.5l4-4z',
+  undo:'M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z',
+  ret:'M19 3h-5.6l1.3-1.3L13.3.3 9.6 4l3.7 3.7 1.4-1.4L13.4 5H19v14H5V5h2V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z',
+  cancel:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11H7v-2h10z',
+  shop:'M20 4H4v2l-1 5a3 3 0 0 0 3 3v6h12v-6a3 3 0 0 0 3-3l-1-5zM8 18v-4h8v4z',
+  phone:'M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm0 18H7V5h10z',
+  apps:'M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z',
+  back:'M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z',
+  add:'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z',
+  help:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17h-2v-2h2zm2.1-7.7-.9.9A3 3 0 0 0 13 15h-2v-.5a3.5 3.5 0 0 1 1-2.4l1.2-1.3A2 2 0 0 0 12 7a2 2 0 0 0-2 2H8a4 4 0 0 1 8 0 3.2 3.2 0 0 1-.9 2.3z',
+  people:'M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 1.9 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z',
+  search:'M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z',
+  chev:'M9 6l6 6-6 6z',
+  call:'M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.2 11 11 0 0 0 3.5.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11 11 0 0 0 .6 3.5 1 1 0 0 1-.3 1z',
+  receipt:'M19 2 17.5 3.5 16 2l-1.5 1.5L13 2l-1.5 1.5L10 2 8.5 3.5 7 2 5.5 3.5 4 2v20l1.5-1.5L7 22l1.5-1.5L10 22l1.5-1.5L13 22l1.5-1.5L16 22l1.5-1.5L19 22zM17 9H7V7h10zm0 4H7v-2h10zm0 4H7v-2h10z',
+  flag:'M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z',
+  wifi:'M2 4.3 4.3 2 22 19.7 19.7 22l-4-4H12l-2-2.5 2-2.5-3-3-7-5.7zM12 3a15 15 0 0 1 10 3.8l-2 2A12 12 0 0 0 12 6z',
+  close:'M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z',
+  filteroff:'M2.4 3.8 3.8 2.4l17.8 17.8-1.4 1.4-6.2-6.2V21l-4-4v-4.6L2.4 3.8zM6.4 3h14.2l-6.1 7.6z',
+  wa:'M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm5.6 14.1c-.2.6-1.2 1.2-1.7 1.2-.9.1-1 .8-4.4-.8s-4.7-4.6-4.8-4.8-1.1-1.4-1.1-2.6.7-1.8 1-2a1 1 0 0 1 .7-.3h.5c.2 0 .4-.1.7.5l.9 2.1c.1.2.1.4 0 .6l-.4.5c-.2.2-.4.4-.2.7a10 10 0 0 0 4.5 3.4c.3.1.5.1.7-.1l.8-1c.2-.2.4-.2.6-.1l2 1c.3.1.5.2.6.3s.1.9-.1 1.4z',
+  sci:'M13 3v6.6l4.8 8.3A2 2 0 0 1 16 21H8a2 2 0 0 1-1.7-3.1L11 9.6V3zM9 3h6v2H9z',
+};
+
+function nextStep(s){
+  switch(s){
+    case 'pending': return {q:'Ready to start on this one?',
+      choices:[{to:'in_progress',label:'Start working on it',detail:'Takes the job in your name',icon:'build'}],
+      more:[{to:'waiting_parts',label:'Waiting for a part',detail:"The part it needs isn't in stock",icon:'parts'},
+            {to:'cancelled',label:'Customer withdrew the job',icon:'cancel'}]};
+    case 'waiting_parts': return {q:'Has the part arrived?',
+      choices:[{to:'in_progress',label:'Resume work',detail:'Back on the bench',icon:'build'}],
+      more:[{to:'pending',label:'Put back in the queue',icon:'hour'},
+            {to:'cancelled',label:'Customer withdrew the job',icon:'cancel'}]};
+    case 'in_progress': return {q:'Is this phone repairable?',
+      choices:[{to:'completed',label:'Yes',detail:'Repaired and ready',icon:'check',kind:'good'},
+               {to:'unrepairable',label:'No',detail:"Can't be fixed",icon:'block',kind:'bad'}],
+      more:[{to:'waiting_parts',label:'Waiting for a part',icon:'parts'},
+            {to:'pending',label:'Put back in the queue',icon:'hour'},
+            {to:'cancelled',label:'Customer withdrew the job',icon:'cancel'}]};
+    case 'completed': return {q:'Repaired. Hand it back?',
+      choices:[{to:'out_for_delivery',label:'Dispatch to customer',detail:'Out with a rider, or ready to collect',icon:'ship'}],
+      more:[{to:'delivered',label:'Collected at the counter',detail:'Take payment now',icon:'hand'},
+            {to:'in_progress',label:"Reopen — the repair didn't hold",icon:'build'},
+            {to:'waiting_parts',label:'Waiting for a part',icon:'parts'}]};
+    case 'unrepairable': return {q:'Not repairable. Give it back?',
+      choices:[{to:'returned',label:'Return device to customer',detail:'Collect the inspection fee, or waive it',icon:'ret'}],
+      more:[{to:'in_progress',label:'Take another look',detail:'Second opinion',icon:'build'}]};
+    case 'out_for_delivery': return {q:'Did it reach the customer?',
+      choices:[{to:'delivered',label:'Confirm dispatched',detail:'Take payment now',icon:'hand'}],
+      more:[{to:'completed',label:'Came back to the shop',icon:'undo'}]};
+    default: return null;
+  }
+}
+const needsBill    = t => t==='out_for_delivery' || t==='returned';
+const needsPayment = t => t==='delivered'        || t==='returned';
+const isOneTap     = (f,t) => (t==='in_progress'||t==='waiting_parts') && !isClosed(f);
+const sheetTitle = t => ({completed:'Mark as repaired', unrepairable:"Mark as can't be fixed",
+  out_for_delivery:'Dispatch to customer', delivered:'Confirm handover', returned:'Return device',
+  cancelled:'Cancel this job', waiting_parts:'Waiting for a part', in_progress:'Start working on it',
+  pending:'Back to the queue'}[t] || 'Update job');
+
+/* ═══ 2 · Formatting ══════════════════════════════════════════════════════ */
+const INR = new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+const inr = n => '₹' + INR.format(Math.round(n||0));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const shortDate = d => d ? `${d.getDate()} ${MON[d.getMonth()]}` : '';
+const longDate  = d => d ? `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}` : '—';
+const dOnly = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function relativeTime(d){
+  const m = Math.floor((Date.now()-d.getTime())/60000);
+  if (m<1) return 'Just now';
+  if (m<60) return m+'m ago';
+  const h = Math.floor(m/60); if (h<24) return h+'h ago';
+  const dd = Math.floor(h/24); if (dd===1) return 'Yesterday';
+  return dd<7 ? dd+'d ago' : shortDate(d);
+}
+function dayLabel(d){
+  const days = Math.round((dOnly(new Date()) - dOnly(d)) / 86400000);
+  if (days===0) return 'Today';
+  if (days===1) return 'Yesterday';
+  return shortDate(d) + (d.getFullYear()!==new Date().getFullYear() ? ' '+d.getFullYear() : '');
+}
+const isOverdue = j => !isClosed(j.status) && j.expected && dOnly(j.expected) < dOnly(new Date());
+const svg = (p,cls='',st='') => `<svg class="${cls}" style="${st}" viewBox="0 0 24 24"><path d="${p}"/></svg>`;
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* AppColor.tint — an OPAQUE blend over white, so a pill reads the same on any ground */
+function tint(hex,a){
+  const n = parseInt(hex.slice(1),16), r=n>>16, g=(n>>8)&255, b=n&255;
+  const m = v => Math.round(a*v + (1-a)*255);
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+const rgba = (hex,a) => { const n=parseInt(hex.slice(1),16);
+  return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`; };
+function luhn15(b){ let s=0; for(let i=0;i<14;i++){ let d=+b[13-i]; if(i%2===0){d*=2; if(d>9)d-=9;} s+=d; }
+  return b + ((10-(s%10))%10); }
+const groupImei = s => s.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim();
+
+/* ═══ 3 · Money ═══════════════════════════════════════════════════════════ */
+const paidOn  = j => (j.advance||0)+(j.cash||0)+(j.gpay||0);
+const isBilled = j => (j.final||0) > 0;
+const dueOn   = j => j.status==='cancelled' ? 0 : Math.max((j.final||0)-paidOn(j),0);
+function moneyLabel(j){
+  if (j.status==='cancelled') return {t:'Nothing owed', c:'#8A94A3'};
+  if (!isBilled(j))           return {t:'Not billed',   c:'#8A94A3'};
+  const d = dueOn(j);
+  if (d>0) return {t: inr(d) + (isClosed(j.status)?' unpaid':' due'), c:'#C2410C'};
+  return {t: inr(j.final)+' Settled', c:'#047857'};
+}
+function collect(j,target,typed){
+  const usingEstimate = !needsBill(target) && (j.final||0)<=0 && (j.approx||0)>0;
+  const basis = usingEstimate ? j.approx : needsBill(target) ? (parseFloat(typed)||0) : (j.final||0);
+  const now = Math.max(0, basis - paidOn(j));
+  const note = now>0 ? (usingEstimate ? 'No final amount was set, so the agreed estimate stands.'
+                                      : 'Recalculated as you type the amount.')
+             : (basis<=0 ? 'Nothing to collect — the fee was waived.'
+                         : 'Nothing left to collect — already paid in full.');
+  return {basis, now, note};
+}
+
+/* ═══ 4 · Data ════════════════════════════════════════════════════════════ */
+const DEALERS = [
+  {id:1,name:'ramco',shop:'',phone:'9488222838'},
+  {id:2,name:'Bala',shop:'Sri Balaji Mobiles',phone:'9842211903'},
+  {id:3,name:'Imran',shop:'Mobile World Traders',phone:'9003417725'},
+];
+const BRANDS=['Apple','Samsung','Xiaomi','Redmi','Oppo','OnePlus','Realme','Vivo','Huawei','Motorola','Nokia','Tecno','Lava','Google','Itel','Asus','Infinix','Nubia','Nothing Phone','Others'];
+const FAULTS=['Display fault','Audio fault','Charging fault','Network fault','Camera fault','Dead fault','Waterlock case','Dropdown case','Others'];
+const ACCS=['Battery','Back Cover','Charger Adapter','USB Cable','SIM Card','Memory Card','Others'];
+const COLORS=['Black','White','Blue','Gray','Silver','Gold','Green','Purple','Red','Pink','Others'];
+const MODELS={Apple:['iPhone 11','iPhone 13','iPhone SE'],Samsung:['Galaxy S21','Galaxy A54','Galaxy M32'],
+  Xiaomi:['Redmi Note 12','Poco X5'],Redmi:['Redmi Note 11','Redmi Note 13 Pro'],Oppo:['Reno 8','A78','F21 Pro'],
+  OnePlus:['Nord CE 3','11R'],Realme:['Narzo 60','C55'],Vivo:['V27','Y100','T2x']};
+const TACS=['35693803','86123402','35328711','01215600'];
+const SHOP={name:'RAM MOBILE SERVICE',address:'12, Bazaar Road, Erode 638001',phone:'9488222838'};
+
+let DB, seq;
+function seed(){
+  seq = 100;
+  const soon = n => { const d=new Date(); d.setDate(d.getDate()+n); return d; };
+  const ago  = n => { const d=new Date(); d.setMinutes(d.getMinutes()-n); return d; };
+  const mk = (o) => Object.assign({advance:0,final:0,cash:0,gpay:0,diagnosis:'',accessories:'',
+    color:'',notes:'',batchId:null,customerName:'',customerPhone:''}, o);
+
+  const batch = {
+    id:1, number:'RAME8-26-B001', dealer:DEALERS[0], receivedBy:'Ram Prasath (Owner)',
+    technician:'None', priority:'medium', expected:soon(3), notes:'', createdAt:ago(2),
+  };
+  const jobs = [
+    mk({id:1,jobNumber:'RAME8-26-001',brand:'Vivo',model:'T2x',imei:luhn15(TACS[0]+'728123'),
+        issue:'Audio fault, Dropdown case',approx:1250,status:'pending',expected:soon(3),
+        createdAt:ago(2),batchId:1}),
+    mk({id:2,jobNumber:'RAME8-26-002',brand:'Oppo',model:'Reno 8',imei:luhn15(TACS[1]+'645129'),
+        issue:'Waterlock case, Audio fault',approx:750,status:'pending',expected:soon(3),
+        createdAt:ago(2),batchId:1}),
+    mk({id:3,jobNumber:'RAME8-26-003',brand:'OnePlus',model:'Nord CE 3',imei:luhn15(TACS[0]+'401144'),
+        issue:'Audio fault',approx:1500,status:'pending',expected:soon(3),createdAt:ago(2),batchId:1}),
+    /* two walk-ins, so the list is not all dealer work */
+    mk({id:4,jobNumber:'RAME8-26-004',brand:'Samsung',model:'Galaxy A54',imei:luhn15(TACS[2]+'110455'),
+        issue:'Display fault',approx:4500,final:4500,cash:2000,status:'in_progress',expected:soon(1),
+        createdAt:ago(190),customerName:'Priya Nair',customerPhone:'9842119034'}),
+    mk({id:5,jobNumber:'RAME8-26-005',brand:'Apple',model:'iPhone 13',imei:luhn15(TACS[3]+'772104'),
+        issue:'Charging fault',approx:3200,status:'completed',expected:soon(-1),
+        createdAt:ago(1520),customerName:'Karthik Raj',customerPhone:'9003128844'}),
+  ];
+  DB = {batches:[batch], jobs};
+}
+seed();
+
+const batchOf = id => DB.batches.find(b => b.id===id);
+const jobsOf  = id => DB.jobs.filter(j => j.batchId===id);
+const jobById = id => DB.jobs.find(j => j.id===id);
+function rollup(bid){
+  const d = jobsOf(bid);
+  const done = d.filter(j=>['completed','out_for_delivery','delivered','unrepairable','returned'].includes(j.status)).length;
+  const unrep = d.filter(j=>['unrepairable','returned'].includes(j.status)).length;
+  const canc = d.filter(j=>j.status==='cancelled').length;
+  return {deviceCount:d.length, doneCount:done, unrepairableCount:unrep, cancelledCount:canc,
+    repairedCount:Math.max(done-unrep,0), openCount:Math.max(d.length-done-canc,0),
+    totalDue:d.reduce((s,j)=>s+dueOn(j),0)};
+}
+function summaryLine(r){
+  const p=[`${r.deviceCount} device${r.deviceCount===1?'':'s'}`];
+  if (r.repairedCount>0) p.push(`${r.repairedCount} done`);
+  if (r.unrepairableCount>0) p.push(`${r.unrepairableCount} not repairable`);
+  if (r.openCount>0) p.push(`${r.openCount} open`);
+  if (r.cancelledCount>0) p.push(`${r.cancelledCount} cancelled`);
+  return p.join(' · ');
+}
+
+/* ═══ 5 · Navigation ══════════════════════════════════════════════════════ */
+const FILTERS = [
+  {label:'All',        phase:null,          color:'#005655', icon:'apps'},
+  {label:'Dealers',    phase:'__dealers__', color:'#6D28D9', icon:'shop'},
+  {label:'In Shop',    phase:'in_shop',     color:'#1D4ED8', icon:'build'},
+  {label:'Ready',      phase:'ready',       color:'#047857', icon:'check'},
+  {label:'Handover',   phase:'handover',    color:'#BE400C', icon:'ship'},
+  {label:'Dispatched', phase:'__dispatched__', color:'#00514F', icon:'hand'},
+  {label:'Returned',   phase:'__returned__',  color:'#9F1239', icon:'ret'},
+];
+let stack = [{r:'jobs'}];
+let filter = null, query = '';
+// NOT `top` — window.top is a non-configurable browser global, and a
+// top-level `const top` makes the whole script fail to parse.
+const curr = () => stack[stack.length-1];
+function go(route){ stack.push(route); render(); }
+function back(){ if (stack.length>1){ stack.pop(); render(); } }
+const $ = id => document.getElementById(id);
+function toast(msg, bg='#005655', icon=ICON.check){
+  const el = $('toast'); el.style.background = bg;
+  el.innerHTML = svg(icon)+'<span>'+esc(msg)+'</span>'; el.classList.add('on');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('on'), 2600);
+}
+function openSheet(html){ $('sheet').innerHTML = html; $('scrim').classList.add('on'); }
+function closeSheet(){ $('scrim').classList.remove('on'); }
+$('scrim').addEventListener('click', e => { if (e.target.id==='scrim') closeSheet(); });
+
+/* ═══ 6 · Shared pieces ═══════════════════════════════════════════════════ */
+const pill = s => `<span class="pill" style="background:${tint(ST[s].ink,.10)};color:${ST[s].ink}">${ST[s].label}</span>`;
+const headerBand = (title, sub, actions='', back=true) => `
+  <div class="band"><div class="hrow">
+    ${back ? `<button class="hact" data-nav="back" aria-label="Back"><i>${svg(ICON.back)}</i></button>` : ''}
+    <div class="htitle"><b>${esc(title)}</b>${sub?`<span>${esc(sub)}</span>`:''}</div>
+    ${actions}
+  </div></div>`;
+
+function pickerSheet({title, icon, options, multi, current, onDone}){
+  let chosen = new Set(multi ? String(current||'').split(',').map(s=>s.trim()).filter(Boolean)
+                             : (current?[current]:[]));
+  const draw = () => `<div class="grab"></div>
+    <div class="sheet-h"><div style="width:18px">${svg(icon,'',`width:18px;height:18px;fill:#005655`)}</div>
+      <div class="g"><b style="font-size:15px;font-weight:800;letter-spacing:0">${esc(title)}</b></div></div>
+    <div class="sheet-b" style="padding:6px 0">
+      ${options.map(o=>`<button class="optrow" data-v="${esc(o)}">
+        <span class="optbox" style="border-radius:${multi?'6px':'50%'};border:2px solid ${chosen.has(o)?'#005655':'#CBD5E1'};
+          background:${chosen.has(o)?'#005655':'transparent'}">${chosen.has(o)?svg('M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'):''}</span>
+        <span style="font-size:14px;color:#0F172A;font-weight:${chosen.has(o)?600:400}">${esc(o)}</span>
+      </button>`).join('')}
+    </div>
+    <div class="sheet-f"><button class="btn" id="pkDone" style="height:48px;border-radius:14px;font-size:15px">Done</button></div>`;
+  const render2 = () => {
+    openSheet(draw());
+    const sh = $('sheet');
+    sh.querySelectorAll('.optrow').forEach(b => b.onclick = () => {
+      const v = b.dataset.v;
+      if (multi){ chosen.has(v)?chosen.delete(v):chosen.add(v); } else { chosen = new Set([v]); }
+      render2();
+    });
+    sh.querySelector('#pkDone').onclick = () => { closeSheet(); onDone(multi?[...chosen].join(', '):([...chosen][0]||'')); };
+  };
+  render2();
+}
+
+/* ═══ 7 · SCREEN · Repair Jobs ════════════════════════════════════════════ */
+function matchesPhase(j, phase){
+  if (phase==='in_shop')  return ST[j.status].phase===0;
+  if (phase==='ready')    return ST[j.status].phase===1;
+  if (phase==='handover') return ST[j.status].phase===2;
+  return true;
+}
+function chipCount(phase){
+  /* A count is only rendered when the current fetch can answer it honestly. */
+  if (phase==='__dealers__')    return filter===null||filter==='__dealers__' ? DB.batches.length : null;
+  if (phase==='__dispatched__') return (filter===null||filter==='__dispatched__'||filter==='handover')
+                                       ? DB.jobs.filter(j=>j.status==='delivered').length : null;
+  if (phase==='__returned__')   return (filter===null||filter==='__returned__')
+                                       ? DB.jobs.filter(j=>['unrepairable','returned'].includes(j.status)).length : null;
+  if (filter===null) return phase===null ? DB.jobs.filter(j=>!j.batchId).length + DB.batches.length
+                                         : DB.jobs.filter(j=>matchesPhase(j,phase)).length;
+  if (filter==='__returned__') return null;
+  return phase===filter ? DB.jobs.filter(j=>matchesPhase(j,phase)).length : null;
+}
+function listItems(){
+  const q = query.trim().toLowerCase();
+  const hit = j => !q || [j.brand,j.model,j.jobNumber,j.imei,j.customerName,j.customerPhone,j.issue]
+    .some(v => String(v||'').toLowerCase().includes(q));
+  // A batch matches on the dealer and its own number, but also on any device
+  // inside it — searching an IMEI must surface the drop-off holding that phone.
+  const bhit = b => !q || [b.number, b.dealer.name, b.dealer.shop, b.dealer.phone]
+    .some(v => String(v||'').toLowerCase().includes(q)) || jobsOf(b.id).some(hit);
+  if (filter==='__dealers__')
+    return DB.batches.filter(bhit).map(b=>({kind:'batch', b, at:b.createdAt}));
+  if (filter===null){
+    return [...DB.jobs.filter(j=>!j.batchId).filter(hit).map(j=>({kind:'job', j, at:j.createdAt})),
+            ...DB.batches.filter(bhit).map(b=>({kind:'batch', b, at:b.createdAt}))]
+           .sort((x,y)=>y.at-x.at);
+  }
+  let js = DB.jobs.filter(hit);
+  if (filter==='__dispatched__') js = js.filter(j=>j.status==='delivered');
+  else if (filter==='__returned__') js = js.filter(j=>['unrepairable','returned'].includes(j.status));
+  else js = js.filter(j=>matchesPhase(j,filter));
+  return js.sort((x,y)=>y.createdAt-x.createdAt).map(j=>({kind:'job', j, at:j.createdAt}));
+}
+function jobCard(j){
+  /* An overdue phone is red whatever its status — "three days late" is the more
+     urgent of the two facts, and the badge still says the other one. */
+  const late = isOverdue(j);
+  const c = late ? '#BE123C' : ST[j.status].c;
+  const device = `${j.brand} ${j.model}`.trim() || 'Unknown device';
+  const who = [j.customerName, j.customerPhone].filter(Boolean).join(' · ');
+  const trace = [j.issue, relativeTime(j.createdAt)].filter(Boolean).join(' · ');
+  const m = moneyLabel(j);
+  return `<button class="tcard" data-nav="job" data-id="${j.id}"
+      style="background:linear-gradient(135deg,${tint(c,.07)} 0%,#fff 70%);border:1px solid ${tint(c,.22)};
+             box-shadow:0 6px 14px -6px ${rgba(c,.13)}">
+    <span class="lead" style="background:${tint(ST[j.status].c,.15)};border:1px solid ${tint(ST[j.status].c,.24)}">
+      ${svg(ICON[ST[j.status].icon],'',`fill:${ST[j.status].ink}`)}</span>
+    <span class="tbody">
+      <span class="trow1"><span class="tname">${esc(device)}</span>${pill(j.status)}</span>
+      ${who?`<span class="twho">${esc(who)}</span>`:''}
+      <span class="rule" style="color:${tint(c,.26)}"></span>
+      <span class="trow2">
+        <span class="ttrace">${esc(trace)}</span>
+        ${late?`<span class="oflag">${j.expected?'due '+shortDate(j.expected):'overdue'}</span>`:''}
+        <span class="mpill" style="background:${tint(m.c,.10)};color:${m.c}">${esc(m.t)}</span>
+      </span>
+    </span></button>`;
+}
+function batchCard(b){
+  const c = '#6D28D9', r = rollup(b.id);
+  const seg = (n,col) => n>0 ? `<span style="flex:${n} 1 0;background:${col}"></span>` : '';
+  const m = r.totalDue>0 ? {t:'₹'+Math.round(r.totalDue)+' due', c:'#C2410C'} : {t:'Settled', c:'#047857'};
+  return `<button class="tcard" data-nav="batch" data-id="${b.id}"
+      style="background:linear-gradient(135deg,${tint(c,.07)} 0%,#fff 70%);border:1px solid ${tint(c,.22)};
+             box-shadow:0 6px 14px -6px ${rgba(c,.13)}">
+    <span class="lead" style="background:${tint(c,.15)};border:1px solid ${tint(c,.24)}">
+      ${svg(ICON.shop,'',`fill:${c}`)}</span>
+    <span class="tbody">
+      <span class="trow1"><span class="tname">${esc(b.dealer.shop||b.dealer.name)}</span>
+        <span class="pill" style="background:${tint(c,.10)};color:${c}">${r.deviceCount} device${r.deviceCount===1?'':'s'}</span></span>
+      <span class="twho">${esc(summaryLine(r))}</span>
+      <span class="bmeter">${seg(r.repairedCount,'#10B981')}${seg(r.unrepairableCount,'#E11D48')}${seg(r.cancelledCount,'#64748B')}${seg(r.openCount,'#E4E8EE')}</span>
+      <span class="trow2"><span class="ttrace">${esc(relativeTime(b.createdAt))}</span>
+        <span class="mpill" style="background:${tint(m.c,.10)};color:${m.c}">${esc(m.t)}</span></span>
+    </span></button>`;
+}
+function screenJobs(){
+  const open = DB.jobs.filter(j=>!isClosed(j.status)).length, total = DB.jobs.length;
+  const actions = `
+    <button class="hact" data-act="help" aria-label="How a job moves"><i>${svg(ICON.help)}</i></button>
+    <button class="hact" data-act="people" aria-label="Customers"><i>${svg(ICON.people)}</i></button>
+    <button class="hact fill" data-act="new" aria-label="New job"><i>${svg(ICON.add)}</i></button>`;
+  const chips = FILTERS.map(f=>{
+    const on = filter===f.phase, n = chipCount(f.phase);
+    return `<button class="chip" data-filter="${f.phase===null?'':f.phase}"
+      style="background:${on?tint(f.color,.14):'#fff'};border-color:${on?tint(f.color,.30):'#E4E8EE'}">
+      ${svg(ICON[f.icon],'',`fill:${on?f.color:'#55606E'}`)}
+      <span class="lb" style="color:${on?f.color:'#55606E'}">${f.label}</span>
+      ${n!==null?`<span class="ct" style="color:${on?f.color:(n===0?'#8A94A3':'#55606E')}">${n}</span>`:''}
+    </button>`;}).join('');
+
+  const items = listItems();
+  let body;
+  if (!items.length){
+    const e = filter==='__dealers__'
+      ? {i:ICON.shop, t:'No dealer batches', m:'Use ＋ and pick “Dealer batch” to take in several devices at once.'}
+      : filter===null
+      ? {i:ICON.build, t:'No jobs yet', m:'When a customer hands a phone in, start it with the ＋ button.'}
+      : {i:ICON.filteroff, t:'Nothing in '+(FILTERS.find(f=>f.phase===filter)||FILTERS[0]).label.toLowerCase(),
+         m:'Every device is somewhere else in the shop right now.'};
+    body = `<div class="empty"><div class="tile">${svg(e.i)}</div><b>${esc(e.t)}</b><p>${esc(e.m)}</p>
+      ${filter!==null?`<div style="margin-top:20px"><button class="btn sec" data-filter="" style="width:auto;margin:0 auto;padding:0 18px">Show all jobs</button></div>`:''}</div>`;
+  } else {
+    /* Overdue is lifted out of the day buckets and pinned above them — a late
+       phone is not a fact about the day it arrived. */
+    const late = items.filter(x=>x.kind==='job' && isOverdue(x.j));
+    const rest = items.filter(x=>!(x.kind==='job' && isOverdue(x.j)));
+    const groups = [];
+    if (late.length) groups.push({title:'Overdue', urgent:true, items:late});
+    const byDay = new Map();
+    rest.forEach(x=>{ const k = dayLabel(x.at); if(!byDay.has(k)) byDay.set(k,[]); byDay.get(k).push(x); });
+    byDay.forEach((v,k)=>groups.push({title:k, urgent:false, items:v}));
+    body = groups.map(g=>`
+      <div class="dayhead"><span class="t" style="color:${g.urgent?'#BE123C':'#8A94A3'}">
+        ${g.urgent?svg(ICON.flag)+' ':''}${esc(g.title)}</span>
+        <span class="r" style="background:${g.urgent?'rgba(190,18,60,.18)':'#E4E8EE'}"></span>
+        <span class="c" style="color:${g.urgent?'#BE123C':'#8A94A3'}">${g.items.length}</span></div>
+      ${g.items.map(x=>x.kind==='batch'?batchCard(x.b):jobCard(x.j)).join('')}`).join('');
+  }
+
+  return `${headerBand('Repair Jobs', total===0?'Nothing in the shop':`${open} open · ${total} total`, actions, false)}
+    <div class="band" style="padding-top:0"><div class="search">${svg(ICON.search)}
+      <input id="q" placeholder="Name, phone, device or job #" value="${esc(query)}"></div></div>
+    <div class="chips">${chips}</div>
+    <div class="scroll"><div class="list">${body}</div></div>`;
+}
+function wireJobs(){
+  const q = $('q');
+  if (q) q.oninput = e => { query = e.target.value; const p = e.target.selectionStart;
+    render(); const a = $('q'); if(a){ a.focus(); a.setSelectionRange(p,p); } };
+  document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => {
+    filter = b.dataset.filter || null; render(); });
+  const act = a => document.querySelector(`[data-act="${a}"]`);
+  if (act('new')) act('new').onclick = newJobSheet;
+  if (act('help')) act('help').onclick = () => toast('The job workflow guide opens here.','#0B1220',ICON.help);
+  if (act('people')) act('people').onclick = () => toast('Customers list opens here.','#0B1220',ICON.people);
+}
+function newJobSheet(){
+  const opt = (icon,color,title,sub,route) => `
+    <button class="tcard" data-new="${route}" style="background:#fff;border:1px solid #E4E8EE;box-shadow:var(--sh-card);padding:12px;align-items:center">
+      <span style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;display:grid;place-items:center;background:${tint(color,.12)}">
+        ${svg(ICON[icon],'',`width:19px;height:19px;fill:${color}`)}</span>
+      <span class="tbody"><span style="display:block;font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:#0B1220">${title}</span>
+        <span style="display:block;font-size:12px;color:#55606E;margin-top:1px">${sub}</span></span>
+      ${svg(ICON.chev,'',`width:20px;height:20px;fill:#8A94A3`)}</button>`;
+  openSheet(`<div class="grab"></div>
+    <div class="sheet-h"><div class="g"><b>New job</b><span>One device, or a whole dealer drop-off</span></div>
+      <button class="hact" data-close="1" style="width:32px;height:32px;flex:0 0 32px">
+        <i style="width:28px;height:28px;background:#F1F4F8;border-color:#E4E8EE">${svg(ICON.close,'',`width:16px;height:16px;fill:#55606E`)}</i></button></div>
+    <div class="sheet-b" style="padding:12px 16px 20px">
+      ${opt('phone','#1D4ED8','Walk-in job','One customer, one device','walk')}
+      ${opt('shop','#6D28D9','Dealer batch','One dealer, several devices at once','batchCreate')}
+    </div>`);
+  $('sheet').querySelector('[data-close]').onclick = closeSheet;
+  $('sheet').querySelectorAll('[data-new]').forEach(b => b.onclick = () => {
+    closeSheet();
+    if (b.dataset.new==='batchCreate'){ resetForm(); go({r:'batchCreate'}); }
+    else toast('The walk-in form opens here — this prototype follows the dealer path.','#0B1220',ICON.phone);
+  });
+}
+
+/* ═══ 8 · SCREEN · Dealer Batch (intake) ══════════════════════════════════ */
+const MAX_DEVICES = 50;
+let form;
+const blankDev = () => ({brand:'',model:'',imei:'',issue:'',color:'',code:'',acc:'',approx:'',advance:'',notes:'',open:false,err:false});
+function resetForm(){ form = {dealer:null, recv:'Ram Prasath (Owner)', tech:'None', priority:'medium',
+  date:null, notes:'', devices:[blankDev()]}; }
+resetForm();
+
+function screenIntake(){
+  const n = form.devices.length;
+  const badge = (d,col,ic,txt,extra='') => `<div class="ib-h">
+    <div class="ib-badge" style="background:${rgba(col,.12)};color:${col}">${d}</div>
+    ${svg(ICON[ic],'ico',`fill:${col}`)}<b>${txt}</b><span class="grow"></span>${extra}</div><div class="ib-rule"></div>`;
+  const dv = form.date ? `${form.date.getDate()}/${form.date.getMonth()+1}/${form.date.getFullYear()}` : '';
+
+  return `<div class="band"><div class="ib-head">
+      <button class="ib-back" data-nav="back" aria-label="Back">${svg('M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z')}</button>
+      <div class="ib-ttl"><b>Dealer Batch</b><span>Dealer once, then every device</span></div>
+      <button class="chip-demo" id="demoFill" title="Fill the batch with sample devices (testing builds only)">
+        ${svg(ICON.sci)}Demo</button>
+      <div class="chip-count">${n} device${n===1?'':'s'}</div>
+    </div></div>
+    <div class="scroll"><div class="list" style="padding:8px 16px 32px;background:var(--l-bg)">
+
+      <div class="ib-card">${badge(1,'#8B5CF6','shop','Dealer')}<div class="ib-b">
+        <button class="fld" id="fDealer">${svg(ICON.shop,'ico')}
+          <span class="body"><span class="lab up">Dealer *</span>
+            <span class="val" style="color:${form.dealer?'var(--l-ink)':'var(--l-label)'}">
+              ${form.dealer?esc((form.dealer.shop||form.dealer.name)+' · '+form.dealer.phone):'—'}</span></span>
+          ${svg('M7 10l5 5 5-5z','caret')}</button>
+        <div style="margin-top:10px"><button class="lnk" id="fNewDealer">${svg(ICON.add)}New dealer</button></div>
+        <p style="margin:10px 0 0;font-size:11.5px;color:var(--l-hint);line-height:1.5">With none on file this reads:
+          “No dealers yet. Add a customer and turn on &quot;This is a dealer&quot; to use bulk intake.”</p>
+      </div></div>
+
+      <div class="ib-card">${badge(2,'#10B981','apps','Applies to all devices')}<div class="ib-b">
+        <div class="stack">
+          <button class="fld" id="fRecv"><span class="body"><span class="lab up">Received By *</span>
+            <span class="val">${esc(form.recv)}</span></span>${svg('M7 10l5 5 5-5z','caret')}</button>
+          <button class="fld" id="fTech"><span class="body"><span class="lab up">Technician (optional)</span>
+            <span class="val">${esc(form.tech)}</span></span>${svg('M7 10l5 5 5-5z','caret')}</button>
+        </div>
+        <div style="margin-top:14px"><div class="grp-lab">Job Priority</div><div class="segs" id="prio">
+          ${[['low','Low','#3B82F6'],['medium','Medium','#F59E0B'],['high','High','#EF4444']].map(([k,l,c])=>{
+            const on = form.priority===k;
+            return `<button class="seg" data-p="${k}" aria-pressed="${on}" style="background:${on?c:'var(--l-seg)'};
+              border-color:${on?c:'var(--l-border)'};color:${on?'#fff':'var(--l-body)'};
+              box-shadow:${on?`0 3px 8px ${rgba(c,.30)}`:'none'}">${l}</button>`;}).join('')}
+        </div></div>
+        <div style="margin-top:12px"><button class="fld" id="fDate">
+          ${svg('M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 15H5V9h14z','ico')}
+          <span class="body"><span class="val" style="${dv?'font-weight:600':'color:var(--l-label);font-weight:400'}">
+            ${dv||'Expected Delivery Date (optional)'}</span></span>
+          ${svg('M9 6l6 6-6 6z','caret','width:14px;height:14px;fill:var(--l-hint)')}</button></div>
+        <div style="margin-top:12px"><div class="fld" style="align-items:flex-start;cursor:text">
+          ${svg('M3 6h18v2H3zm0 5h12v2H3zm0 5h18v2H3z','ico','margin-top:2px')}
+          <span class="body"><span class="lab">Batch Notes</span>
+            <input id="fNotes" value="${esc(form.notes)}" style="width:100%;border:0;background:transparent;outline:none;font:inherit;font-size:14px;padding:2px 0 0;color:var(--l-ink)"></span>
+        </div></div>
+      </div></div>
+
+      <div class="ib-card">${badge(3,'#3B82F6','phone','Devices',
+        `<button class="lnk" id="addDev" ${n>=MAX_DEVICES?'disabled':''}>${svg(ICON.add)}${n>=MAX_DEVICES?'Max 50':'Add'}</button>`)}
+        <div style="padding:8px 12px 14px"><div id="devList">${devListHtml()}</div></div></div>
+
+      <button class="cta" id="createBtn">${svg('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4z')}
+        Create ${n} Repair Job${n===1?'':'s'}</button>
+    </div></div>`;
+}
+function devListHtml(){
+  return form.devices.map((d,i)=>{
+    const digits = d.imei.replace(/\D/g,''), numeric = /^[\d\s]*$/.test(d.imei);
+    let suf = '';
+    if (numeric && digits.length && digits.length<15) suf = `<span style="font-size:11px;font-weight:700;color:var(--l-label);font-variant-numeric:tabular-nums">${digits.length}/15</span>`;
+    else if (numeric && digits.length===15) suf = luhn15(digits.slice(0,14))===digits
+      ? svg('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8z','','width:18px;height:18px;fill:#10B981')
+      : svg('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2zm0-4h-2V7h2z','','width:18px;height:18px;fill:#EF4444');
+    return `<div class="dev${d.err?' err':''}" data-i="${i}">
+      <div class="dev-bar"><div class="dev-n">${i+1}</div><span class="grow"></span>
+        <button class="iconbtn" data-act="dup" title="Duplicate">${svg('M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11z','','fill:#64748B')}</button>
+        <button class="iconbtn" data-act="del" title="Remove" ${form.devices.length===1?'disabled':''}>${svg(ICON.close,'',`fill:${form.devices.length===1?'#CBD5E1':'#EF4444'}`)}</button></div>
+      <div class="two">
+        <button class="fld" data-act="brand" style="padding:10px 14px">${svg('M12 7V3H2v18h20V7zM6 19H4v-2h2zm0-4H4v-2h2zm0-4H4V9h2zm0-4H4V5h2zm4 12H8v-2h2zm0-4H8v-2h2zm0-4H8V9h2zm0-4H8V5h2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8z','ico')}
+          <span class="body"><span class="lab">Brand</span>${d.brand?`<span class="tags"><span class="tag">${esc(d.brand)}</span></span>`:''}</span>
+          ${svg('M7 10l5 5 5-5z','caret')}</button>
+        <input class="inp" data-act="model" placeholder="Model" value="${esc(d.model)}"></div>
+      <div class="fld" style="padding:11px 14px;margin-top:8px">
+        ${svg('M3 3h8v8H3zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 3h8v8h-8zm2 2v4h4V5zM13 13h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2zm2 2h2v2h-2zm0-8h2v2h-2z','ico')}
+        <span class="body"><span class="lab">IMEI / Serial Number</span>
+          <input data-act="imei" value="${esc(d.imei)}" style="width:100%;border:0;background:transparent;outline:none;font:inherit;font-size:14px;letter-spacing:.6px;font-variant-numeric:tabular-nums;color:#0F172A;padding:2px 0 0"></span>
+        <span style="display:flex;align-items:center;gap:6px">${suf}
+          <span class="scanbtn">${svg('M2 4h6v2H4v4H2zm14 0h6v6h-2V6h-4zM2 14h2v4h4v2H2zm18 0h2v6h-6v-2h4zM7 7h10v10H7z')}</span></span></div>
+      <button class="fld" data-act="issue" style="margin-top:8px;padding:10px 14px">${svg('M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z','ico')}
+        <span class="body"><span class="lab">Reported Issue</span>
+          ${d.issue?`<span class="tags">${d.issue.split(',').map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('')}</span>`:`<span class="hint">Select fault(s)…</span>`}</span>
+        ${svg('M7 10l5 5 5-5z','caret')}</button>
+      ${d.open?`<div class="stack" style="margin-top:8px">
+        <div class="two">
+          <button class="fld" data-act="color" style="padding:10px 14px">${svg('M12 3a9 9 0 0 0 0 18c.8 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8z','ico')}
+            <span class="body"><span class="lab">Color</span>${d.color?`<span class="tags"><span class="tag">${esc(d.color)}</span></span>`:''}</span>
+            ${svg('M7 10l5 5 5-5z','caret')}</button>
+          <input class="inp" data-act="code" placeholder="Unlock Code" value="${esc(d.code)}"></div>
+        <button class="fld" data-act="acc" style="padding:10px 14px">${svg(ICON.parts,'ico')}
+          <span class="body"><span class="lab">Accessories</span>
+            ${d.acc?`<span class="tags">${d.acc.split(',').map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('')}</span>`:`<span class="hint">Charger, back cover, SIM…</span>`}</span>
+          ${svg('M7 10l5 5 5-5z','caret')}</button>
+        <div class="two"><input class="inp" data-act="approx" inputmode="decimal" placeholder="Approx ₹" value="${esc(d.approx)}">
+          <input class="inp" data-act="advance" inputmode="decimal" placeholder="Advance ₹" value="${esc(d.advance)}"></div>
+        <input class="inp" data-act="notes" placeholder="Notes" value="${esc(d.notes)}"></div>`:''}
+      <button class="more-btn" data-act="more">${svg(d.open?'M12 8l-6 6 1.4 1.4L12 10.8l4.6 4.6L18 14z':'M12 16l6-6-1.4-1.4L12 13.2 7.4 8.6 6 10z')}
+        ${d.open?'Less':'More (color, code, accessories, ₹)'}</button>
+    </div>`;}).join('');
+}
+function wireIntake(){
+  const list = $('devList');
+  list.onclick = e => {
+    const b = e.target.closest('[data-act]'); if (!b || b.tagName==='INPUT') return;
+    const i = +b.closest('.dev').dataset.i, d = form.devices[i];
+    switch(b.dataset.act){
+      case 'more': d.open = !d.open; render(); break;
+      case 'dup':
+        if (form.devices.length>=MAX_DEVICES) return toast('A batch can hold at most 50 devices.','#F59E0B','M12 2 1 21h22z');
+        /* everything but the IMEI — a copied one is the exact mistake the
+           duplicate check exists to catch */
+        form.devices.splice(i+1,0,{...d,imei:'',err:false}); render(); break;
+      case 'del': if (form.devices.length>1){ form.devices.splice(i,1); render(); } break;
+      case 'brand': pickerSheet({title:'Brand',icon:ICON.shop,options:BRANDS,multi:false,current:d.brand,onDone:v=>{d.brand=v;render();}}); break;
+      case 'issue': pickerSheet({title:'Reported Issue',icon:'M12 2 1 21h22z',options:FAULTS,multi:true,current:d.issue,onDone:v=>{d.issue=v;render();}}); break;
+      case 'color': pickerSheet({title:'Color',icon:'M12 3a9 9 0 0 0 0 18z',options:COLORS,multi:false,current:d.color,onDone:v=>{d.color=v;render();}}); break;
+      case 'acc':   pickerSheet({title:'Accessories',icon:ICON.parts,options:ACCS,multi:true,current:d.acc,onDone:v=>{d.acc=v;render();}}); break;
+    }
+  };
+  list.oninput = e => {
+    const el = e.target.closest('[data-act]'); if (!el || el.tagName!=='INPUT') return;
+    const i = +el.closest('.dev').dataset.i, d = form.devices[i], k = el.dataset.act;
+    if (k==='imei'){
+      d.imei = /^[\d\s]*$/.test(el.value) ? groupImei(el.value).slice(0,20) : el.value.slice(0,20);
+      const p = d.imei.length; render();
+      const a = document.querySelector(`.dev[data-i="${i}"] [data-act="imei"]`);
+      if (a){ a.focus(); a.setSelectionRange(p,p); }
+      return;
+    }
+    d[k] = el.value;
+  };
+  $('addDev').onclick = () => { if (form.devices.length>=MAX_DEVICES)
+    return toast('A batch can hold at most 50 devices.','#F59E0B','M12 2 1 21h22z');
+    form.devices.push(blankDev()); render(); };
+  $('prio').onclick = e => { const b = e.target.closest('.seg'); if (b){ form.priority = b.dataset.p; render(); } };
+  $('fDealer').onclick = () => pickerSheet({title:'Dealer',icon:ICON.shop,
+    options:DEALERS.map(d=>(d.shop||d.name)+' · '+d.phone),multi:false,
+    current:form.dealer?(form.dealer.shop||form.dealer.name)+' · '+form.dealer.phone:'',
+    onDone:v=>{ form.dealer = DEALERS.find(d=>v.startsWith(d.shop||d.name))||null; render(); }});
+  $('fNewDealer').onclick = () => toast('The New Dealer sheet opens here.','#0B1220',ICON.shop);
+  $('fRecv').onclick = () => pickerSheet({title:'Received By',icon:ICON.people,
+    options:['Ram Prasath (Owner)','Suresh (technician)','Kavya (reception)'],multi:false,
+    current:form.recv,onDone:v=>{form.recv=v;render();}});
+  $('fTech').onclick = () => pickerSheet({title:'Technician',icon:ICON.build,
+    options:['None','Suresh (technician)','Vignesh (technician)'],multi:false,
+    current:form.tech,onDone:v=>{form.tech=v;render();}});
+  $('fDate').onclick = () => { const d = new Date(); d.setDate(d.getDate()+3);
+    form.date = form.date ? null : d; render(); };
+  $('fNotes').oninput = e => form.notes = e.target.value;
+  $('demoFill').onclick = demoFill;
+  $('createBtn').onclick = submitBatch;
+}
+function demoFill(){
+  form.dealer = form.dealer || DEALERS[1];
+  const brands = Object.keys(MODELS), n = 3 + Math.floor(Math.random()*3);
+  form.devices = Array.from({length:n},()=>{
+    const b = brands[Math.floor(Math.random()*brands.length)];
+    const f = [...FAULTS.slice(0,8)].sort(()=>Math.random()-.5).slice(0,1+Math.floor(Math.random()*2));
+    return {...blankDev(), open:true, brand:b, model:MODELS[b][Math.floor(Math.random()*MODELS[b].length)],
+      imei:groupImei(luhn15(TACS[Math.floor(Math.random()*4)]+String(Math.floor(Math.random()*1e6)).padStart(6,'0'))),
+      issue:f.join(', '),
+      /* dealer work is quoted per handset and lands below counter rates */
+      approx:String((Math.floor(Math.random()*7)+2)*250)};
+  });
+  render();
+  toast(`Demo batch filled — ${n} devices for ${form.dealer.shop||form.dealer.name}. Review and save.`,'#005655',ICON.sci);
+}
+function submitBatch(){
+  form.devices.forEach(d=>d.err=false);
+  if (!form.dealer){ render(); return toast('Select the dealer dropping these off','#F59E0B','M12 2 1 21h22z'); }
+  const bad = form.devices.findIndex(d=>!(d.brand.trim()||d.model.trim()||d.imei.trim()));
+  if (bad!==-1){ form.devices[bad].err = true; render();
+    return toast(`Device ${bad+1} needs at least a brand, model or IMEI.`,'#F59E0B','M12 2 1 21h22z'); }
+  const seen = new Map();
+  for (let i=0;i<form.devices.length;i++){
+    const k = form.devices[i].imei.replace(/\D/g,''); if (!k) continue;
+    if (seen.has(k)){ form.devices[i].err = true; render();
+      return toast(`Device ${seen.get(k)+1} and Device ${i+1} have the same IMEI.`,'#F59E0B','M12 2 1 21h22z'); }
+    seen.set(k,i);
+  }
+  const bid = DB.batches.length ? Math.max(...DB.batches.map(b=>b.id))+1 : 1;
+  const stamp = new Date();
+  const num = 'RAME8-26-B' + String(100+bid).padStart(3,'0');
+  DB.batches.unshift({id:bid, number:num, dealer:form.dealer, receivedBy:form.recv,
+    technician:form.tech, priority:form.priority, expected:form.date, notes:form.notes, createdAt:stamp});
+  form.devices.forEach(d=>{
+    const id = Math.max(0,...DB.jobs.map(j=>j.id))+1;
+    DB.jobs.push({id, jobNumber:`RAME8-26-${String(++seq).slice(1)}`, brand:d.brand, model:d.model,
+      imei:d.imei.replace(/\D/g,''), issue:d.issue, approx:parseFloat(d.approx)||0,
+      advance:parseFloat(d.advance)||0, final:0, cash:0, gpay:0, status:'pending',
+      expected:form.date?new Date(form.date):null, createdAt:stamp, batchId:bid,
+      diagnosis:'', accessories:d.acc, color:d.color, notes:d.notes, customerName:'', customerPhone:''});
+  });
+  toast(`${form.devices.length} repair job(s) created!`);
+  stack = [{r:'jobs'},{r:'batch',id:bid}];
+  filter = null; resetForm(); render();
+}
+
+/* ═══ 9 · SCREEN · Batch detail ═══════════════════════════════════════════ */
+function screenBatch(id){
+  const b = batchOf(id), r = rollup(id), devs = jobsOf(id);
+  const sub = [b.dealer.phone, b.number?'#'+b.number:'', relativeTime(b.createdAt)].filter(Boolean).join(' · ');
+  const seg = (n,c) => n>0 ? `<span style="flex:${n} 1 0;background:${c}"></span>` : '';
+  const total = r.deviceCount || 1;
+  const leg = [[r.repairedCount,'repaired','#10B981'],[r.unrepairableCount,'not repairable','#E11D48'],
+               [r.cancelledCount,'cancelled','#64748B'],[r.openCount,'still open','#E4E8EE']];
+  return `${headerBand(b.dealer.shop||b.dealer.name, sub,
+      `<button class="hact" data-act="receipt" aria-label="Send the dealer a handover receipt"><i>${svg(ICON.receipt)}</i></button>
+       <button class="hact" data-act="call" aria-label="Call the dealer"><i>${svg(ICON.call)}</i></button>`)}
+    <div class="scroll"><div class="list" style="padding:16px 14px 20px">
+      <div class="seclabel"><span class="grow">This drop-off</span></div>
+      <div class="card rollup">
+        <div class="ru-top"><div class="ru-l"><div class="k">DEVICES IN</div><div class="v">${r.deviceCount}</div></div>
+          ${r.totalDue>0?`<div class="ru-r"><div class="k">OWED</div><div class="v">₹${Math.round(r.totalDue)}</div></div>`:''}</div>
+        <div class="meter">${seg(r.repairedCount,'#10B981')}${seg(r.unrepairableCount,'#E11D48')}${seg(r.cancelledCount,'#64748B')}${seg(Math.max(total-r.doneCount-r.cancelledCount,0),'#E4E8EE')}</div>
+        <div class="legend">${leg.filter(([n])=>n>0).map(([n,l,c])=>`<span><i style="background:${c}"></i>${n} ${l}</span>`).join('')}</div>
+      </div>
+      <div class="seclabel" style="margin-top:16px"><span class="grow">Devices</span><span class="cnt">${devs.length}</span></div>
+      ${devs.map((j,i)=>{
+        const s = ST[j.status], m = moneyLabel(j), late = isOverdue(j);
+        const nm = `${j.brand} ${j.model}`.trim() || j.imei || 'Unknown device';
+        const ident = ['#'+j.jobNumber, j.imei?'IMEI '+j.imei:''].filter(Boolean).join('  ·  ');
+        const due = (!isClosed(j.status) && j.expected) ? shortDate(j.expected) : '';
+        return `<button class="drow${late?' late':''}" data-nav="job" data-id="${j.id}">
+          <span class="idx">${i+1}</span>
+          <span class="mid"><span class="nm">${esc(nm)}</span><span class="id">${esc(ident)}</span>
+            ${j.issue?`<span class="flt">${esc(j.issue)}</span>`:''}
+            <span class="mn"><span class="m money" style="color:${m.c}">${esc(m.t)}</span>
+              ${due?`<span class="due" style="color:${late?'#BE123C':'#8A94A3'}">due ${due}</span>`:''}</span></span>
+          <span class="rt">${pill(j.status)}${svg(ICON.chev)}</span></button>`;}).join('')}
+      ${devs.length?'':`<p style="font-size:12.5px;color:var(--ink3);padding:4px 2px">No devices on this drop-off.</p>`}
+    </div></div>
+    <div class="dock">${batchDockHtml(id)}</div>`;
+}
+
+/* ── The batch as one moving thing ─────────────────────────────────────────
+   The drop-off walks a four-beat line — start, quote, dispatch, return the
+   unfixable — and the dock only ever offers the beat the batch is actually on.
+   Each beat still writes PER DEVICE: money is not a batch-level fact, so the
+   sheets below set an amount on every handset rather than one on the tray. */
+function batchStep(bid){
+  const d = jobsOf(bid);
+  if (!d.length) return {key:'empty'};
+  const pending  = d.filter(j => j.status==='pending');
+  const bench    = d.filter(j => j.status==='in_progress' || j.status==='waiting_parts');
+  const ready    = d.filter(j => j.status==='completed' || j.status==='out_for_delivery');
+  const unfixed  = d.filter(j => j.status==='unrepairable');
+  if (pending.length) return {key:'start',    items:pending};
+  if (bench.length)   return {key:'estimate', items:bench};
+  if (ready.length)   return {key:'dispatch', items:ready};
+  if (unfixed.length) return {key:'return',   items:unfixed};
+  return {key:'closed', items:[]};
+}
+const BATCH_STEP = {
+  start:    {cap:'Every device is still waiting', label:'Start the batch',       icon:'build',
+             note:n => `Puts ${n} device${n===1?'':'s'} on the bench in one move.`},
+  estimate: {cap:'On the bench',                  label:'Set the estimate',      icon:'check',
+             note:n => `Quote ${n} device${n===1?'':'s'} — one figure, or each on its own.`},
+  dispatch: {cap:'Ready to go back',              label:'Dispatch to the dealer',icon:'hand',
+             note:n => `Bills and closes ${n} device${n===1?'':'s'}.`},
+  return:   {cap:'Could not be fixed',            label:'Return the unrepaired', icon:'ret',
+             note:n => `Hands ${n} device${n===1?'':'s'} back, fee optional.`},
+};
+function batchDockHtml(bid){
+  const step = batchStep(bid);
+  if (step.key === 'closed')
+    return `<span class="cap-lab">This drop-off is closed</span>
+      <button class="btn sec" data-act="receipt2">${svg(ICON.receipt)}Send the dealer a handover receipt</button>`;
+  if (step.key === 'empty')
+    return `<span class="cap-lab">Nothing to do</span>
+      <div class="well"><p>No devices on this drop-off.</p></div>`;
+  const s = BATCH_STEP[step.key], n = step.items.length;
+  return `<span class="cap-lab">${esc(s.cap)} · ${n} device${n===1?'':'s'}</span>
+    <button class="actbtn" data-bulk="${step.key}">${svg(ICON[s.icon])}
+      <span class="lb"><b>${esc(s.label)}</b><span>${esc(s.note(n))}</span></span></button>`;
+}
+function wireBatch(id){
+  const b = batchOf(id);
+  document.querySelector('[data-act="call"]').onclick = () => toast('Dialling '+b.dealer.phone,'#005655',ICON.call);
+  document.querySelectorAll('[data-act="receipt"],[data-act="receipt2"]').forEach(el =>
+    el.onclick = () => go({r:'receipt', id}));
+  const bulk = document.querySelector('[data-bulk]');
+  if (bulk) bulk.onclick = () => bulkSheet(id, bulk.dataset.bulk);
+}
+
+/* ── The bulk sheets ───────────────────────────────────────────────────────
+   Every one of these lists the devices and writes each amount to its own job.
+   The batch is the gesture; the device is still where the money lands. */
+function bulkSheet(bid, kind){
+  const step = batchStep(bid);
+  const items = step.items.map(j => ({j, amt: kind==='estimate' ? String(j.approx||'')
+                                         : kind==='dispatch' ? String(j.approx||j.final||'')
+                                         : '', skip:false}));
+  const money = kind !== 'start';
+  const CFG = {
+    start:    {title:'Start the batch',       sub:'Moves every waiting device onto the bench',
+               cta:n => `Start ${n} device${n===1?'':'s'}`},
+    estimate: {title:'Set the estimate',      sub:'Quote each device, then mark them repaired',
+               cta:n => `Quote ${n} device${n===1?'':'s'}`, col:'Estimate'},
+    dispatch: {title:'Dispatch to the dealer',sub:'The estimate becomes the bill — change any of it',
+               cta:n => `Dispatch ${n} device${n===1?'':'s'}`, col:'Final'},
+    return:   {title:'Return the unrepaired', sub:'Charge an inspection fee, or waive it',
+               cta:n => `Return ${n} device${n===1?'':'s'}`, col:'Fee'},
+  }[kind];
+
+  const rows = () => items.map((it,i) => {
+    const nm = `${it.j.brand} ${it.j.model}`.trim() || 'Unknown device';
+    return `<div class="brow${it.skip?' off':''}" data-i="${i}">
+      <span class="bidx">${i+1}</span>
+      <span class="bname"><b>${esc(nm)}</b><small>#${esc(it.j.jobNumber)} · ${ST[it.j.status].label}</small></span>
+      ${money?`<input class="bamt" data-i="${i}" inputmode="decimal" placeholder="0" value="${esc(it.amt)}" ${it.skip?'disabled':''}>`:''}
+      ${kind==='estimate'?`<button class="bx" data-skip="${i}" aria-pressed="${it.skip}"
+        title="Can't be fixed">${svg(ICON.block)}</button>`:''}
+    </div>`;}).join('');
+
+  const total = () => items.filter(it=>!it.skip).reduce((s,it)=>s+(parseFloat(it.amt)||0),0);
+  const live  = () => items.filter(it=>!it.skip).length;
+
+  const draw = () => {
+    const totalRow = (kind==='dispatch'||kind==='return')
+      ? `<div class="btot"><span class="k">${kind==='return'?'FEES':'TO BILL'}</span>
+         <span class="v" id="bTot">${inr(total())}</span></div>` : '';
+    const applyAll = money ? `
+      <label class="flab">${CFG.col} for every device (₹)</label>
+      <div class="two"><input class="finput" id="bAll" inputmode="decimal" placeholder="0">
+        <button class="btn sec" id="bApply" style="height:46px;flex:0 0 118px">Apply to all</button></div>
+      <span class="fhelp">${kind==='estimate'
+        ? 'An estimate is a conversation, not a bill — nothing is owed until a device is billed.'
+        : kind==='return'
+        ? 'Leave a device empty to waive its fee. A device that was never billed owes nothing.'
+        : 'Each figure is prefilled from that device’s estimate. Change any that moved.'}</span>
+      <div class="seclabel" style="margin:16px 0 2px"><span class="grow">Devices</span>
+        <span class="cnt" id="bCnt">${live()}</span></div>` : `
+      <div class="notice info">${svg(ICON.build)}<div>Every waiting device moves to <b style="display:inline">In Progress</b>
+        together. No money changes hands on this step.</div></div>
+      <div class="seclabel" style="margin:16px 0 2px"><span class="grow">Devices</span><span class="cnt">${items.length}</span></div>`;
+
+    openSheet(`<div class="grab"></div>
+      <div class="sheet-h"><div class="g"><b>${esc(CFG.title)}</b><span>${esc(CFG.sub)}</span></div></div>
+      <div class="sheet-b">${applyAll}<div id="bRows">${rows()}</div>${totalRow}</div>
+      <div class="sheet-f">
+        ${kind==='dispatch' ? `<button class="btn" id="bGo">${esc(ctaText())}</button>
+          <button class="btn sec" id="bLater" style="margin-top:8px">Dispatch — the dealer pays later</button>`
+        : `<button class="btn" id="bGo">${esc(ctaText())}</button>`}
+      </div>`);
+    wire();
+  };
+
+  const refreshTotals = () => {
+    const t = $('bTot'); if (t) t.textContent = inr(total());
+    const c = $('bCnt'); if (c) c.textContent = live();
+    const g = $('bGo');
+    if (g) g.textContent = ctaText();
+  };
+  const ctaText = () => live() === 0 && kind === 'estimate'
+    ? 'Mark all as not repairable'
+    : kind === 'dispatch' ? `${CFG.cta(live())} · collect ${inr(total())}` : CFG.cta(live());
+
+  function wire(){
+    const sh = $('sheet');
+    const all = sh.querySelector('#bAll');
+    if (all) sh.querySelector('#bApply').onclick = () => {
+      const v = all.value.trim();
+      items.forEach(it => { if (!it.skip) it.amt = v; });
+      draw();
+    };
+    sh.querySelectorAll('.bamt').forEach(inp => inp.oninput = e => {
+      items[+e.target.dataset.i].amt = e.target.value; refreshTotals();
+    });
+    sh.querySelectorAll('[data-skip]').forEach(btn => btn.onclick = () => {
+      const it = items[+btn.dataset.skip];
+      it.skip = !it.skip;
+      // A device nobody could fix must not be swept into "repaired" with the
+      // rest — that is the one thing a bulk action must never quietly do.
+      draw();
+    });
+    const later = sh.querySelector('#bLater');
+    if (later) later.onclick = () => commit(false);
+    sh.querySelector('#bGo').onclick = () => commit(true);
+  }
+
+  function commit(collectNow){
+    if (kind === 'estimate'){
+      const bad = items.find(it => !it.skip && !(parseFloat(it.amt) > 0));
+      if (bad) return toast('Give every device an estimate, or mark it as one that cannot be fixed.','#F59E0B','M12 2 1 21h22z');
+    }
+    let moved = 0, unfixed = 0;
+    items.forEach(it => {
+      const j = it.j, v = parseFloat(it.amt) || 0;
+      if (kind === 'start'){ j.status = 'in_progress'; moved++; return; }
+      if (kind === 'estimate'){
+        if (it.skip){ j.status = 'unrepairable'; unfixed++; return; }
+        j.approx = v;
+        j.diagnosis = j.diagnosis || 'Repaired on the dealer batch run.';
+        j.status = 'completed'; moved++; return;
+      }
+      if (kind === 'dispatch'){
+        j.final = v;
+        if (collectNow) j.cash += Math.max(v - paidOn(j), 0);
+        j.status = 'delivered'; moved++; return;
+      }
+      if (kind === 'return'){
+        j.final = v;                       // blank stays 0 — the fee is waived
+        if (v > 0 && collectNow) j.cash += Math.max(v - paidOn(j), 0);
+        j.status = 'returned'; moved++;
+      }
+    });
+    closeSheet(); render();
+    const msg = kind==='start'    ? `Batch started — ${moved} device${moved===1?'':'s'} on the bench.`
+              : kind==='estimate' ? (moved ? `${moved} quoted${unfixed?`, ${unfixed} marked not repairable`:''}.`
+                                          : `${unfixed} device${unfixed===1?'':'s'} marked not repairable.`)
+              : kind==='dispatch' ? (collectNow ? `Batch closed — ${inr(items.reduce((s,it)=>s+(parseFloat(it.amt)||0),0))} collected.`
+                                                : `Batch dispatched — the dealer owes ${inr(rollup(bid).totalDue)}.`)
+              : `${moved} device${moved===1?'':'s'} returned.`;
+    toast(msg);
+  }
+
+  draw();
+}
+
+/* ═══ 10 · SCREEN · Job detail ════════════════════════════════════════════ */
+function screenJob(id){
+  const j = jobById(id), s = ST[j.status], m = moneyLabel(j), late = isOverdue(j), due = dueOn(j);
+  const b = j.batchId ? batchOf(j.batchId) : null;
+  const fig = j.status==='cancelled' ? 'Nothing owed' : !isBilled(j) ? 'Not billed' : due>0 ? inr(due) : inr(j.final);
+  const col = (j.status==='cancelled'||!isBilled(j)) ? '#8A94A3' : (due>0 ? '#C2410C' : '#047857');
+  const cap = (isBilled(j) && due>0) ? 'BALANCE DUE' : 'POSITION';
+
+  const body = `
+    ${late?`<div class="notice danger">${svg('M12 2 1 21h22z')}<div><b>Overdue</b>
+      Promised to the customer on ${shortDate(j.expected)}, and still in the shop.</div></div>`:''}
+    <div class="card hero">
+      <div class="k">${cap}</div>
+      <div class="amt"><span class="fig" style="color:${col}">${esc(fig)}</span>
+        <span style="margin-bottom:5px">${pill(j.status)}</span></div>
+      <hr>
+      <div class="phases">${PHASES.map((p,i)=>`
+        ${i?`<span class="bar" style="background:${i<=s.phase?s.c:'#E4E8EE'}"></span>`:''}
+        <span class="node ${i===s.phase?'on':''}"><span class="dot" style="background:${i<=s.phase?s.c:'#E4E8EE'}"></span>
+          <span class="lb">${p}</span></span>`).join('')}</div>
+    </div>
+    <div class="seclabel"><span class="grow">The device</span></div>
+    <div class="card panel">
+      <div class="kv"><span class="k">Device</span><span class="v">${esc(`${j.brand} ${j.model}`.trim()||'Unknown device')}</span></div>
+      <div class="kv"><span class="k">Job number</span><span class="v">#${esc(j.jobNumber)}</span></div>
+      <div class="kv"><span class="k">IMEI</span><span class="v">${esc(groupImei(j.imei))}</span></div>
+      ${j.issue?`<div class="kv"><span class="k">The problem</span><span class="v">${esc(j.issue)}</span></div>`:''}
+      ${b?`<div class="kv"><span class="k">Dealer</span><span class="v">${esc(b.dealer.shop||b.dealer.name)}</span></div>
+          <div class="kv"><span class="k">Arrived in batch</span><span class="v">#${esc(b.number)}</span></div>`
+        :`<div class="kv"><span class="k">Customer</span><span class="v">${esc(j.customerName||'—')}</span></div>
+          <div class="kv"><span class="k">Phone</span><span class="v">${esc(j.customerPhone||'—')}</span></div>`}
+      ${j.expected?`<div class="kv"><span class="k">Promised by</span><span class="v">${shortDate(j.expected)}</span></div>`:''}
+    </div>
+    <div class="seclabel"><span class="grow">Money</span></div>
+    <div class="card panel">
+      <div class="kv"><span class="k">Estimate given</span><span class="v">${j.approx?inr(j.approx):'—'}</span></div>
+      <div class="kv"><span class="k">Final bill</span><span class="v">${isBilled(j)?inr(j.final):'—'}</span></div>
+      ${j.advance?`<div class="kv"><span class="k">Advance paid</span><span class="v">${inr(j.advance)}</span></div>`:''}
+      ${j.cash?`<div class="kv"><span class="k">Paid in cash</span><span class="v">${inr(j.cash)}</span></div>`:''}
+      ${j.gpay?`<div class="kv"><span class="k">Paid by GPay</span><span class="v">${inr(j.gpay)}</span></div>`:''}
+      <div class="kv"><span class="k" style="font-weight:700;color:var(--ink)">Position</span>
+        <span class="v strong" style="color:${m.c}">${esc(m.t)}</span></div>
+      ${(!isBilled(j)&&j.status!=='cancelled')?`<div style="padding:8px 2px 4px;font-size:12px;line-height:1.45;color:var(--ink2)">
+        Not billed yet. An estimate is a conversation, not a bill — nothing is owed until this job is billed.</div>`:''}
+    </div>
+    ${j.diagnosis?`<div class="seclabel"><span class="grow">Work done</span></div>
+      <div class="card panel"><div style="padding:8px 2px;font-size:13px;line-height:1.45;color:var(--ink)">${esc(j.diagnosis)}</div></div>`:''}`;
+
+  return `${headerBand('Repair job','')}
+    <div class="scroll"><div class="list" style="padding:16px 14px 20px">${body}</div></div>
+    <div class="dock" id="dock">${dockHtml(j)}</div>`;
+}
+function dockHtml(j){
+  const step = nextStep(j.status);
+  if (!step){
+    const r = ['unrepairable','returned'].includes(j.status) ? 'Send the inspection receipt' : 'Send the repair receipt';
+    return `<span class="cap-lab">This job is closed</span>
+      <button class="btn sec" data-act="closedReceipt">${svg(ICON.receipt)}${r}</button>`;
+  }
+  const one = step.choices.length===1, a0 = step.choices[0];
+  const tap = one && isOneTap(j.status, a0.to), guard = one && a0.to==='delivered';
+  const capt = tap ? 'One tap · undo if wrong' : guard ? 'This closes the job' : step.q;
+  let h = `<span class="cap-lab">${esc(capt)}</span>`;
+  if (guard){
+    h += `<div class="slide" id="slider" role="button" tabindex="0" aria-label="${esc(a0.label)}">
+      <span class="lbl">${esc(a0.label)}</span><span class="arrows">››</span>
+      <span class="knob">${svg(ICON.chev)}</span></div>`;
+  } else if (step.choices.length===2){
+    h += `<div class="pair">${step.choices.map(a=>`
+      <button class="actbtn ${a.kind||''}" data-to="${a.to}" style="flex-direction:column;align-items:flex-start;gap:2px">
+        <b style="font-size:15px">${esc(a.label)}</b>
+        <span style="font-size:11.5px;font-weight:500;opacity:.85">${esc(a.detail||'')}</span></button>`).join('')}</div>`;
+  } else {
+    h += `<button class="actbtn" data-to="${a0.to}">${svg(ICON[a0.icon])}
+      <span class="lb"><b>${esc(a0.label)}</b>${a0.detail?`<span>${esc(a0.detail)}</span>`:''}</span></button>`;
+  }
+  if (step.more.length){
+    h += `<button class="morelink" id="moreLink">Something else happened</button>
+      <div id="moreWrap" hidden style="display:grid;gap:8px;padding-top:8px">
+        ${step.more.map(a=>`<button class="actbtn quiet" data-to="${a.to}">${svg(ICON[a.icon])}
+          <span class="lb"><b style="font-size:13.5px">${esc(a.label)}</b>${a.detail?`<span>${esc(a.detail)}</span>`:''}</span>
+        </button>`).join('')}</div>`;
+  }
+  return h;
+}
+function wireJob(id){
+  const j = jobById(id);
+  document.querySelectorAll('#dock [data-to]').forEach(b => b.onclick = () => beginMove(j, b.dataset.to));
+  const ml = $('moreLink');
+  if (ml) ml.onclick = () => { const w = $('moreWrap'); w.hidden = !w.hidden;
+    ml.textContent = w.hidden ? 'Something else happened' : 'Less common, still allowed'; };
+  const cr = document.querySelector('[data-act="closedReceipt"]');
+  if (cr) cr.onclick = () => toast('The receipt preview opens here.','#005655',ICON.receipt);
+  // A closed job has no step at all, so guard on the step and not just on the
+  // element — the slider only exists for the one guarded move.
+  const step = nextStep(j.status), sl = $('slider');
+  if (sl && step) wireSlider(sl, j, step.choices[0]);
+}
+function wireSlider(track, job, action){
+  const knob = track.querySelector('.knob');
+  const max = () => track.clientWidth - 48 - 8;
+  let dragging = false;
+  const done = () => { knob.style.left = '4px'; beginMove(job, action.to); };
+  knob.addEventListener('pointerdown', e => { dragging = true; knob.setPointerCapture(e.pointerId); });
+  knob.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const x = e.clientX - track.getBoundingClientRect().left - 24;
+    knob.style.left = Math.max(4, Math.min(4+max(), x)) + 'px';
+    if (x >= max()){ dragging = false; done(); }
+  });
+  knob.addEventListener('pointerup', () => { if (dragging){ dragging = false; knob.style.left = '4px'; } });
+  track.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); done(); } });
+}
+function beginMove(job, to){
+  if (isOneTap(job.status, to)){
+    const step = nextStep(job.status);
+    const a = [...step.choices, ...step.more].find(x => x.to===to);
+    job.status = to; render();
+    toast(`${ST[to].label} · ${a?a.label:ST[to].label}`, '#0B1220', ICON.build);
+    return;
+  }
+  moveSheet(job, to);
+}
+function moveSheet(job, to){
+  const bill = needsBill(to), pay = needsPayment(to), verdict = to==='completed'||to==='unrepairable';
+  let finalTxt = bill ? String(job.approx||'') : '', mode = 'cash', cash = '', gpay = '';
+  const draw = () => {
+    const c = collect(job, to, finalTxt);
+    let b = '';
+    if (verdict){
+      b += `<label class="flab">Estimate given (₹)</label>
+        <input class="finput" id="fEst" inputmode="decimal" value="${esc(String(job.approx||''))}">
+        <span class="fhelp">What the customer agreed to at intake. Change it only if the real cost moved.</span>`;
+      if (to==='completed') b += `<div style="height:14px"></div><label class="flab">Diagnosis / Fix Description *</label>
+        <textarea class="finput" id="fDiag" rows="2" style="font-weight:500;font-size:13.5px"
+          placeholder="Describe what was fixed...">${esc(job.diagnosis)}</textarea>`;
+    }
+    if (bill) b += `<label class="flab">${to==='returned'?'Inspection fee (₹)':'Final amount (₹)'}</label>
+      <input class="finput" id="fFinal" inputmode="decimal" value="${esc(finalTxt)}">
+      <span class="fhelp">${to==='returned'
+        ?'Optional. Leave it empty to waive the fee — nothing will be owed.'
+        :'Prefilled from the agreed estimate. Change it if the real cost differed.'}</span>`;
+    if (pay){
+      b += `<div class="collect"><div class="k">COLLECT NOW</div><div class="v">${inr(c.now)}</div>
+        <div class="n">${esc(c.note)}</div></div>`;
+      if (c.now>0){
+        b += `<label class="flab" style="margin-top:14px">Payment mode</label><div class="modes" id="modes">
+          <button class="mode" data-m="cash" aria-pressed="${mode==='cash'}">Cash</button>
+          <button class="mode" data-m="gpay" aria-pressed="${mode==='gpay'}">GPay / UPI</button>
+          <button class="mode" data-m="split" aria-pressed="${mode==='split'}">Split</button></div>`;
+        if (mode==='split'){
+          const cv = parseFloat(cash)||0, gv = parseFloat(gpay)||0, sum = cv+gv;
+          const st = (!cash&&!gpay) ? 'info' : Math.abs(sum-c.now)<=0.01 ? 'good' : 'warn';
+          const msg = st==='info' ? 'Type how much came in as cash — the rest fills in as GPay.'
+                    : st==='good' ? `${inr(cv)} cash + ${inr(gv)} GPay = ${inr(c.now)}`
+                    : `Cash and GPay must add up to ${inr(c.now)} — they currently total ${inr(sum)}.`;
+          b += `<div class="two" style="margin-top:12px">
+            <div><label class="flab">Cash (₹)</label><input class="finput" id="fCash" inputmode="numeric" value="${esc(cash)}"></div>
+            <div><label class="flab">GPay (₹)</label><input class="finput" id="fGpay" inputmode="numeric" value="${esc(gpay)}"></div></div>
+            <div class="notice ${st}" style="margin-top:12px">${svg(st==='good'?ICON.check:'M12 2 1 21h22z')}<div>${esc(msg)}</div></div>`;
+        }
+      }
+    }
+    if (!verdict && !bill && !pay) b += `<label class="flab">Remark ${to==='pending'?'*':'(optional)'}</label>
+      <textarea class="finput" rows="2" style="font-weight:500;font-size:13.5px" placeholder="Anything worth recording"></textarea>`;
+
+    openSheet(`<div class="grab"></div>
+      <div class="sheet-h"><div class="g"><b>${esc(sheetTitle(to))}</b><span>Moves this device to ${ST[to].label}</span></div></div>
+      <div class="sheet-b">${b}</div>
+      <div class="sheet-f"><button class="btn" id="mvGo">${pay?'Take payment and close':'Move to '+ST[to].label}</button></div>`);
+
+    const sh = $('sheet');
+    const est = sh.querySelector('#fEst');  if (est) est.oninput = e => job.approx = parseFloat(e.target.value)||0;
+    const dg  = sh.querySelector('#fDiag'); if (dg)  dg.oninput = e => job.diagnosis = e.target.value;
+    const fn  = sh.querySelector('#fFinal');
+    if (fn) fn.oninput = e => { finalTxt = e.target.value; const p = e.target.selectionStart; draw();
+      const a = document.querySelector('#fFinal'); if (a){ a.focus(); a.setSelectionRange(p,p); } };
+    const md = sh.querySelector('#modes');
+    if (md) md.onclick = e => { const x = e.target.closest('.mode'); if (!x) return;
+      mode = x.dataset.m; if (mode==='split'){ cash=''; gpay=''; } draw(); };
+    /* the remainder mirrors into the other box on every keystroke, so an
+       over-payment cannot be typed and an under-payment auto-completes */
+    const fc = sh.querySelector('#fCash'), fg = sh.querySelector('#fGpay');
+    if (fc) fc.oninput = e => { const v = Math.min(Math.max(parseFloat(e.target.value)||0,0), c.now);
+      cash = e.target.value===''?'':String(v); gpay = e.target.value===''?'':String(Math.max(c.now-v,0)); draw(); };
+    if (fg) fg.oninput = e => { const v = Math.min(Math.max(parseFloat(e.target.value)||0,0), c.now);
+      gpay = e.target.value===''?'':String(v); cash = e.target.value===''?'':String(Math.max(c.now-v,0)); draw(); };
+
+    sh.querySelector('#mvGo').onclick = () => {
+      const cc = collect(job, to, finalTxt);
+      if (to==='completed' && !String(job.diagnosis).trim())
+        return toast('Describe what was fixed before marking this repaired.','#EF4444','M12 2 1 21h22z');
+      if (pay && cc.now>0 && mode==='split'){
+        const sum = (parseFloat(cash)||0)+(parseFloat(gpay)||0);
+        if (Math.abs(sum-cc.now)>0.01) return toast(`Cash and GPay must add up to ${inr(cc.now)}.`,'#EF4444','M12 2 1 21h22z');
+      }
+      if (bill) job.final = parseFloat(finalTxt)||0;
+      if (pay && cc.now>0){
+        if (mode==='cash') job.cash += cc.now;
+        else if (mode==='gpay') job.gpay += cc.now;
+        else { job.cash += parseFloat(cash)||0; job.gpay += parseFloat(gpay)||0; }
+      }
+      job.status = to; closeSheet(); render(); toast('Status updated successfully!');
+    };
+  };
+  draw();
+}
+
+/* ═══ 11 · SCREEN · Handover receipt ══════════════════════════════════════ */
+function screenReceipt(id){
+  const b = batchOf(id), all = jobsOf(id);
+  const live = all.filter(j=>j.status!=='cancelled');
+  const billed = live.filter(isBilled);
+  // "Not yet billed" must mean STILL TO BE PRICED, so a closed device that was
+  // never charged — an unrepairable phone returned with its fee waived — does
+  // not count. The shipped buildBatchReceiptData() tests !isBilled alone, which
+  // stamps a fully settled batch ESTIMATES ONLY the moment one fee is waived.
+  // The trap the rule exists for is untouched: an OPEN unpriced device still
+  // blocks PAID IN FULL.
+  const unbilled = live.filter(j=>!isBilled(j) && !isClosed(j.status));
+  const billedTotal = billed.reduce((s,j)=>s+j.final,0);
+  const receivedTotal = live.reduce((s,j)=>s+paidOn(j),0);
+  const unbilledEst = unbilled.reduce((s,j)=>s+(j.approx||0),0);
+  const balance = rollup(id).totalDue;
+
+  /* Order matters, and the middle branch is the trap: PAID IN FULL requires
+     there is nothing LEFT to bill, not merely that something was billed. */
+  const key = balance>0 ? 'due'
+            : (billed.length && !unbilled.length) ? 'paid'
+            : (!billed.length && live.length && live.every(j=>isClosed(j.status))) ? 'noCharge'
+            : 'notBilled';
+  const S = {
+    due:      {t:'BALANCE DUE '+inr(balance), bg:'#FFF7ED', fg:'#C2410C', close:'Balance payable when the devices are collected.'},
+    paid:     {t:'PAID IN FULL',   bg:'#ECFDF5', fg:'#047857', close:'All devices settled. Thank you.'},
+    noCharge: {t:'NO CHARGE',      bg:'#E6EEEE', fg:'#005655', close:'Nothing charged on this drop-off.'},
+    notBilled:{t:'ESTIMATES ONLY', bg:'#E6EEEE', fg:'#005655', close:'Amounts are estimates and may change once each device is inspected.'},
+  }[key];
+  const sub = (unbilled.length && live.length)
+    ? `${unbilled.length} of ${live.length} device${live.length===1?'':'s'} not yet billed. This figure will change once they are priced.` : '';
+  const asPdf = all.length > 5;
+
+  return `${headerBand('Handover receipt','')}
+    <div class="scroll"><div class="list" style="padding:16px 14px 20px">
+      <p style="margin:0 0 12px;font-size:12px;line-height:1.45;color:var(--ink2)">${asPdf
+        ? 'This is what the dealer receives, as a PDF. Check the devices and total, then send.'
+        : 'This is what the dealer receives. Check the devices and total, then send.'}</p>
+      <div class="rc">
+        <div class="rc-h"><span class="no">#${esc(b.number)}</span>
+          <div class="shop">${esc(SHOP.name)}</div>
+          <div class="addr">${esc(SHOP.address)} · ${esc(SHOP.phone)}</div>
+          <span class="chip2">DEVICE HANDOVER RECEIPT</span></div>
+        <div class="rc-meta">
+          <div><div class="k">RECEIVED FROM</div><div class="v">${esc(b.dealer.shop||b.dealer.name)}</div>
+            <div class="v sm">${esc(b.dealer.phone)}</div></div>
+          <div style="text-align:right"><div class="k">RECEIVED</div><div class="v">${longDate(b.createdAt)}</div>
+            <div class="v sm">${b.expected?'Expected back '+longDate(b.expected):'—'}</div></div>
+          <div><div class="k">TAKEN IN BY</div><div class="v sm" style="font-weight:700;color:var(--ink)">${esc(b.receivedBy)}</div></div>
+          <div style="text-align:right"><div class="k">AS OF</div>
+            <div class="v sm" style="font-weight:700;color:var(--ink)">${longDate(new Date())}</div></div>
+        </div>
+        <div class="rc-sec">DEVICES RECEIVED (${all.length})</div>
+        ${all.length ? all.map((j,i)=>{
+          const nm = `${j.brand} ${j.model}`.trim()||'Unknown device';
+          const amt = j.status==='cancelled' ? '—' : isBilled(j) ? inr(j.final) : (j.approx?'est. '+inr(j.approx):'—');
+          const strong = isBilled(j) && j.status!=='cancelled';
+          return `<div class="rc-dev"><span class="n">${i+1}</span>
+            <span class="b"><span class="t">${esc(nm)}</span>
+              <span class="s">IMEI ${esc(groupImei(j.imei))} · ${ST[j.status].label}</span></span>
+            <span class="a" style="color:${strong?'#0B1220':'#8A94A3'}">${esc(amt)}</span></div>`;
+        }).join('') : `<div style="padding:6px 16px 8px;font-size:12px;color:var(--ink3)">No devices on this drop-off.</div>`}
+        <div class="rc-tot">
+          ${billedTotal>0?`<div class="r"><span class="k">Billed so far</span><span class="v">${inr(billedTotal)}</span></div>`:''}
+          <div class="r mut"><span class="k">Received</span><span class="v">−${inr(receivedTotal)}</span></div>
+          <div class="r mut"><span class="k">Not yet billed · ${unbilled.length} device${unbilled.length===1?'':'s'}</span>
+            <span class="v">${unbilledEst?'est. '+inr(unbilledEst):'—'}</span></div>
+          <hr><div class="r big"><span class="k">TO PAY NOW</span><span class="v">${inr(balance)}</span></div>
+        </div>
+        <div class="stamp" style="background:${S.bg};color:${S.fg};border:1px solid ${S.fg}47">${esc(S.t)}</div>
+        ${sub?`<div class="stamp-sub">${esc(sub)}</div>`:''}
+        <div class="rc-f">${esc(S.close)}</div>
+      </div>
+    </div></div>
+    <div class="dock"><button class="btn" data-act="wa" style="background:#25D366">${svg(ICON.wa)}Send on WhatsApp</button></div>`;
+}
+
+/* ═══ 12 · Render ═════════════════════════════════════════════════════════ */
+let lastKey = '';
+function render(){
+  const t = curr();
+  const sc = $('screen');
+  // A render replaces the whole screen, so hold the scroll position across one:
+  // expanding "More" on device 12, or typing a search, must not throw the list
+  // back to the top. Only within the same screen — a new screen starts at 0.
+  const key = t.r + ':' + (t.id || '');
+  const prev = sc.querySelector('.scroll');
+  const keep = (key === lastKey && prev) ? prev.scrollTop : 0;
+
+  if (t.r==='jobs')            sc.innerHTML = screenJobs();
+  else if (t.r==='batchCreate')sc.innerHTML = screenIntake();
+  else if (t.r==='batch')      sc.innerHTML = screenBatch(t.id);
+  else if (t.r==='job')        sc.innerHTML = screenJob(t.id);
+  else if (t.r==='receipt')    sc.innerHTML = screenReceipt(t.id);
+
+  sc.querySelectorAll('[data-nav]').forEach(el => el.onclick = () => {
+    const n = el.dataset.nav;
+    if (n==='back') back();
+    else if (n==='job')   go({r:'job',   id:+el.dataset.id});
+    else if (n==='batch') go({r:'batch', id:+el.dataset.id});
+  });
+  if (t.r==='jobs')             wireJobs();
+  else if (t.r==='batchCreate') wireIntake();
+  else if (t.r==='batch')       wireBatch(t.id);
+  else if (t.r==='job')         wireJob(t.id);
+  else if (t.r==='receipt')     document.querySelector('[data-act="wa"]').onclick = () =>
+    toast(jobsOf(t.id).length>5 ? 'Sending as a PDF — IMEIs stay readable.' : 'Sending as a picture on WhatsApp.','#25D366',ICON.wa);
+
+  const now = sc.querySelector('.scroll');
+  if (now && keep) now.scrollTop = keep;
+  lastKey = key;
+}
+
+/* The phone fills the window; nothing else is on the page. */
+function fit(){
+  const s = Math.min((window.innerHeight - 30) / 844, (window.innerWidth - 30) / 390, 1.3);
+  document.documentElement.style.setProperty('--scale', Math.max(.5, s).toFixed(3));
+}
+window.addEventListener('resize', fit); fit();
+
+/* Invisible demo aids, so the screen stays clean: R resets, P plays the flow,
+   Esc/Backspace is the hardware back button. */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const k = e.key.toLowerCase();
+  if (k === 'r'){ seed(); stack = [{r:'jobs'}]; filter = null; query = ''; resetForm(); closeSheet(); render(); }
+  else if (k === 'p') play();
+  else if (e.key === 'Escape' || e.key === 'Backspace'){
+    e.preventDefault();
+    if ($('scrim').classList.contains('on')) closeSheet(); else back();
+  }
+});
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let playing = false;
+async function play(){
+  if (playing) return;
+  playing = true;
+  seed(); filter = null; query = ''; stack = [{r:'jobs'}]; render(); await wait(900);
+  const b = DB.batches[0];
+  stack = [{r:'jobs'},{r:'batch',id:b.id}]; render(); await wait(1100);
+  const [j1, j2] = jobsOf(b.id);
+  stack.push({r:'job', id:j1.id}); render(); await wait(900);
+  j1.status='in_progress'; render(); toast('In Progress · Start working on it','#0B1220',ICON.build); await wait(1300);
+  j1.diagnosis='Speaker mesh cleaned, earpiece flex replaced.'; j1.status='completed'; render();
+  toast('Status updated successfully!'); await wait(1300);
+  j1.final=j1.approx; j1.status='out_for_delivery'; render(); toast('Status updated successfully!'); await wait(1300);
+  j1.cash=j1.final; j1.status='delivered'; render(); toast('Status updated successfully!'); await wait(1200);
+  j2.status='in_progress'; render(); await wait(700);
+  j2.status='unrepairable'; render(); toast('Not repairable — nothing was billed, so nothing is owed.','#0B1220',ICON.block); await wait(1400);
+  stack = [{r:'jobs'},{r:'batch',id:b.id}]; render(); await wait(1200);
+  stack.push({r:'receipt', id:b.id}); render();
+  toast('Stamp recomputed — one device still unpriced.','#005655',ICON.receipt);
+  playing = false;
+}
+
+render();
+</script>
+</body>
+</html>
