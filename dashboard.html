@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Repair Tracks — Dashboard (Earnings)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   Clean prototype — same screen as dashboard_earnings_ideas.html's chosen
+   "Ledger" layout, with the design-review scaffolding (side notes, state
+   switcher, page copy) stripped out. This is the file to send as-is.
+
+   Tokens are verbatim from repair_tracks/lib/config/design.dart.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --brand:#005655; --brandDeep:#003D3C; --brandSoft:#3E8280;
+  --accent:#C9F003;
+  --ink:#0B1220; --ink2:#55606E; --ink3:#8A94A3;
+  --line:#E4E8EE;
+  --surface:#FFFFFF; --canvas:#F0F4F8; --sunken:#F1F4F8;
+  --danger:#BE123C; --good:#047857;
+  --rPill:999px;
+  --shCard:0 1px 2px rgba(11,18,32,.04), 0 2px 8px rgba(11,18,32,.05);
+  --grad:linear-gradient(135deg,#003D3C 0%,#005655 55%,#3E8280 100%);
+  --page:#E9EDF3;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--page);color:var(--ink);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.5;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+h1,h2,h3,p{margin:0}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;display:block;flex:none;overflow:visible}
+
+/* ── phone ───────────────────────────────────────────────────────────────── */
+.bezel{width:412px;padding:11px;background:#1E262F;border-radius:38px;flex:none;
+  box-shadow:0 24px 60px rgba(11,18,32,.28),0 0 0 1px rgba(11,18,32,.08)}
+.ph{width:390px;height:844px;background:var(--canvas);border-radius:28px;overflow:hidden;
+  position:relative;color:var(--ink);font-size:13px;display:flex;flex-direction:column}
+
+.sbar{height:40px;flex:none;background:var(--brandDeep);display:flex;align-items:center;
+  justify-content:space-between;padding:0 22px 0 26px;color:#fff;font-size:12px;font-weight:600}
+.sbar .rt{display:flex;gap:5px;align-items:center;opacity:.9}
+.sbar .bars{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.sbar .bars s{display:block;width:2.5px;background:currentColor;border-radius:1px}
+.sbar .bat{width:15px;height:9px;border:1.2px solid currentColor;border-radius:2.5px;padding:1px}
+.sbar .bat i{display:block;height:100%;width:70%;background:currentColor;border-radius:1px}
+
+.hdr{flex:none;background:var(--grad);border-radius:0 0 40px 40px;padding:16px 24px 26px;
+  box-shadow:0 8px 20px rgba(0,86,85,.34)}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brandrow{display:flex;align-items:center;gap:10px;min-width:0}
+.blogo{width:38px;height:38px;border-radius:12px;background:rgba(201,240,3,.15);
+  display:grid;place-items:center;color:var(--accent);font-size:19px;flex:none}
+.bname{font-size:17px;font-weight:700;color:#fff;letter-spacing:.2px}
+.hacts{display:flex;align-items:center;gap:9px;flex:none}
+.bell{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.10);
+  display:grid;place-items:center;color:#fff;font-size:18px;position:relative}
+.bell u{position:absolute;top:3px;right:3px;min-width:15px;height:15px;border-radius:50%;
+  background:#DC2626;color:#fff;font-size:8.5px;font-weight:800;display:grid;place-items:center;
+  text-decoration:none;padding:0 3px}
+.avat{width:40px;height:40px;border-radius:50%;border:2.5px solid var(--accent);
+  background:rgba(201,240,3,.15);display:grid;place-items:center;color:var(--accent);
+  font-size:15px;font-weight:700;box-shadow:0 0 10px rgba(201,240,3,.35)}
+.greet{font-size:14px;color:rgba(255,255,255,.75);margin-top:22px}
+.shop{display:flex;align-items:center;gap:8px;margin-top:3px}
+.shop svg{width:23px;height:23px;color:var(--accent)}
+.shop .sn{font-size:25px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1.15}
+.who{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--accent);font-size:12.5px;font-weight:500}
+.who svg{width:13px;height:13px}
+
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 24px 20px;
+  display:flex;flex-direction:column;gap:20px}
+.body::-webkit-scrollbar{width:0}
+
+.sect{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.sect .lt{display:flex;align-items:center;gap:10px}
+.sect .bar{width:4px;height:19px;border-radius:4px;background:var(--brand)}
+.sect .st{font-size:17px;font-weight:700;color:#0F172A;letter-spacing:-.2px}
+.sect .sa{font-size:12.5px;font-weight:600;color:var(--brand)}
+
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.qcard{border-radius:22px;padding:16px;min-height:118px;display:flex;flex-direction:column;
+  justify-content:space-between;color:#fff}
+.qcard .qi{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
+  background:rgba(255,255,255,.25);font-size:20px}
+.qcard .qt{font-size:14.5px;font-weight:700}
+.qcard .qs{font-size:11.5px;color:rgba(255,255,255,.78);margin-top:1px}
+.q1{background:linear-gradient(135deg,#005655,#0A7A6E);box-shadow:0 6px 14px rgba(0,86,85,.3)}
+.q2{background:linear-gradient(135deg,#1A56DB,#3F83F8);box-shadow:0 6px 14px rgba(26,86,219,.3)}
+.q3{background:linear-gradient(135deg,#7E3AF2,#9061F9);box-shadow:0 6px 14px rgba(126,58,242,.3)}
+
+.jrow{background:#fff;border:1px solid #F1F5F9;border-radius:15px;margin-bottom:9px;
+  display:flex;align-items:stretch;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.04)}
+.jrow .acc{width:4px;background:linear-gradient(#0EA5A0,rgba(14,165,160,.35));flex:none}
+.jrow .in{flex:1;display:flex;align-items:center;gap:10px;padding:11px 12px;min-width:0}
+.jrow .ji{width:36px;height:36px;border-radius:11px;background:rgba(14,165,160,.1);
+  display:grid;place-items:center;color:#0EA5A0;font-size:17px;flex:none}
+.jrow .jt{font-size:13.5px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jrow .jm{font-size:11.5px;color:#7E22CE;font-weight:600;margin-top:1px}
+.jrow .jr{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.chip{font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 8px;border-radius:8px;
+  background:rgba(4,120,87,.1);color:var(--good);border:1px solid rgba(4,120,87,.2)}
+.ago{font-size:10.5px;color:#94A3B8}
+
+.nav{flex:none;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(11,18,32,.07);
+  padding:10px 14px 14px;display:flex;gap:2px}
+.nav .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--ink3);font-size:10px;font-weight:700}
+.nav .nb.on{color:var(--brand)}
+.nav .nb svg{width:20px;height:20px}
+.nav .nb.on .pill{background:rgba(0,86,85,.1);border-radius:var(--rPill);padding:5px 16px;margin:-5px -16px}
+
+/* ── the Ledger card ─────────────────────────────────────────────────────── */
+.mono{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink3)}
+
+.seg{display:flex;border-radius:var(--rPill);padding:2px;flex:none;background:var(--sunken)}
+.seg button{font-size:10.5px;font-weight:600;padding:4px 10px;border-radius:var(--rPill);
+  line-height:1.3;transition:.12s;white-space:nowrap;color:var(--ink3)}
+.seg button.on{background:var(--brand);color:#fff;font-weight:700}
+
+.ldg{cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;
+  box-shadow:var(--shCard);width:100%;text-align:left;display:block}
+.ldg .r1{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.lline{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 0}
+.lline .k{font-size:13px;color:var(--ink2);font-weight:500}
+.lline .qty{color:var(--ink3);font-weight:500;font-size:11.5px;margin-left:5px}
+.lline .v{font-size:14.5px;font-weight:600;color:var(--ink);letter-spacing:-.2px}
+.lrule{height:1px;background:var(--ink);opacity:.14;margin:8px 0 4px}
+.lline.tot{padding-top:2px}
+.lline.tot .k{font-size:13px;font-weight:700;color:var(--ink)}
+.lline.tot .v{font-size:25px;font-weight:800;letter-spacing:-.9px;color:var(--good)}
+.lline.tot .v.loss{color:var(--danger)}
+.lfoot{font-size:11px;color:var(--ink3);margin-top:9px;display:flex;justify-content:space-between;gap:8px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<g id="i-bell"><path d="M18 8.6a6 6 0 10-12 0c0 6.4-2.4 8.2-2.4 8.2h16.8S18 15 18 8.6z"/><path d="M13.7 20.6a2 2 0 01-3.4 0"/></g>
+<g id="i-store"><path d="M4 9.5V20h16V9.5"/><path d="M3 4h18l1.2 4.2a3.2 3.2 0 01-6.2 1 3.2 3.2 0 01-6 0 3.2 3.2 0 01-6.2-1L3 4z"/><path d="M9.8 20v-5.4h4.4V20"/></g>
+<g id="i-person"><circle cx="12" cy="8" r="3.4"/><path d="M4.8 20c.6-3.6 3.6-5.6 7.2-5.6s6.6 2 7.2 5.6"/></g>
+<g id="i-plus"><circle cx="12" cy="12" r="9"/><path d="M12 8.4v7.2M8.4 12h7.2"/></g>
+<g id="i-wrench"><path d="M15.4 6.6a4.4 4.4 0 00-5.9 5.2l-5.6 5.6 2.7 2.7 5.6-5.6a4.4 4.4 0 005.2-5.9l-2.7 2.7-2-2 2.7-2.7z"/></g>
+<g id="i-users"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.5-3.2 2.9-5 5.5-5s5 1.8 5.5 5"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17.5 14.9c2 .6 3.2 2.3 3 4.6"/></g>
+<g id="i-home"><path d="M4 10.6L12 4l8 6.6V20H4z"/></g>
+<g id="i-cog"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2a2.1 2.1 0 012.1 2.1v.4l1.5.9.4-.2a2.1 2.1 0 112.1 3.6l-.4.2v1.8l.4.2a2.1 2.1 0 11-2.1 3.6l-.4-.2-1.5.9v.4a2.1 2.1 0 11-4.2 0v-.4l-1.5-.9-.4.2a2.1 2.1 0 11-2.1-3.6l.4-.2v-1.8l-.4-.2a2.1 2.1 0 112.1-3.6l.4.2 1.5-.9v-.4A2.1 2.1 0 0112 3.2z"/></g>
+<g id="i-out"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M19 14.5V20H4V5h5.5"/></g>
+</defs></svg>
+
+<div id="stage"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   DATA — seeded to agree with pnl_report_prototype.html. The Day/Week/Month
+   switch on the card itself is real, live interaction; there is no other
+   control on this page.
+   ══════════════════════════════════════════════════════════════════════════ */
+const PERIODS = [
+  {key:'day',   tab:'Day',   label:'Today'},
+  {key:'week',  tab:'Week',  label:'This week'},
+  {key:'month', tab:'Month', label:'This month'}
+];
+const PROFIT_DATA = {
+  day:   {revenue:15692,  parts:4195,   jobs:5,  partsQty:7},
+  week:  {revenue:17526,  parts:4822,   jobs:7,  partsQty:10},
+  month: {revenue:137185, parts:52056,  jobs:55, partsQty:80}
+};
+
+let period = 'month';
+
+function figures(){
+  const src = PROFIT_DATA[period];
+  const P = PERIODS.find(function(p){ return p.key === period; });
+  return {label:P.label, revenue:src.revenue, parts:src.parts, jobs:src.jobs,
+          partsQty:src.partsQty, profit:src.revenue - src.parts};
+}
+
+function inr(n){
+  const neg = n < 0;
+  const s = Math.round(Math.abs(n)).toString();
+  let out;
+  if (s.length <= 3) out = s;
+  else {
+    const last3 = s.slice(-3);
+    let rest = s.slice(0, -3), r = '';
+    while (rest.length > 2){ r = ',' + rest.slice(-2) + r; rest = rest.slice(0, -2); }
+    out = rest + r + ',' + last3;
+  }
+  return (neg ? '−₹' : '₹') + out;
+}
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const ic = n => '<svg class="i" viewBox="0 0 24 24"><use href="#' + n + '"/></svg>';
+
+function seg(){
+  return '<div class="seg">' + PERIODS.map(function(p){
+    return '<button class="' + (p.key === period ? 'on' : '') + '" ' +
+      'onclick="setPeriod(\'' + p.key + '\')">' + p.tab + '</button>';
+  }).join('') + '</div>';
+}
+
+function ledgerCard(F){
+  const loss = F.profit < 0;
+  return '<div class="ldg" role="button" tabindex="0">' +
+    '<div class="r1"><div class="eyebrow">Earnings</div>' + seg() + '</div>' +
+    '<div class="lline"><div class="k">Revenue collected' +
+      '<span class="qty">· ' + plural(F.jobs, 'job') + '</span></div>' +
+      '<div class="v mono">' + inr(F.revenue) + '</div></div>' +
+    '<div class="lline"><div class="k">Parts used' +
+      (F.partsQty ? '<span class="qty">· ' + plural(F.partsQty, 'item') + '</span>' : '') +
+      '</div><div class="v mono">' + (F.parts ? '− ' : '') + inr(F.parts) + '</div></div>' +
+    '<div class="lrule"></div>' +
+    '<div class="lline tot"><div class="k">' + (loss ? 'Loss' : 'Profit') + '</div>' +
+      '<div class="v mono' + (loss ? ' loss' : '') + '">' + inr(F.profit) + '</div></div>' +
+    '<div class="lfoot"><span>' + F.label + '</span>' +
+      '<span>Full report ›</span></div>' +
+    '</div>';
+}
+
+function phone(topBlock){
+  const statusBar = '<div class="sbar">10:10<span class="rt"><span class="bars">' +
+    '<s style="height:4px"></s><s style="height:6px"></s><s style="height:8px"></s><s style="height:9px"></s>' +
+    '</span><span class="bat"><i></i></span></span></div>';
+
+  const header = '<div class="hdr">' +
+    '<div class="hrow"><div class="brandrow">' +
+      '<div class="blogo">' + ic('i-wrench') + '</div><div class="bname">RepairTracks</div></div>' +
+      '<div class="hacts"><div class="bell">' + ic('i-bell') + '<u>2</u></div>' +
+      '<div class="avat">R</div></div></div>' +
+    '<div class="greet">Good Morning,</div>' +
+    '<div class="shop">' + ic('i-store') + '<div class="sn">Ramco</div></div>' +
+    '<div class="who">' + ic('i-person') + 'Ram Prasath</div>' +
+    '</div>';
+
+  const quick = '<div><div class="sect"><div class="lt"><div class="bar"></div>' +
+      '<div class="st">Quick Actions</div></div></div>' +
+    '<div class="qgrid">' +
+      '<div class="qcard q1"><div class="qi">' + ic('i-plus') + '</div>' +
+        '<div><div class="qt">New Repair</div><div class="qs">Create job card</div></div></div>' +
+      '<div class="qcard q2"><div class="qi">' + ic('i-wrench') + '</div>' +
+        '<div><div class="qt">Repair Jobs</div><div class="qs">View all jobs</div></div></div>' +
+      '<div class="qcard q3"><div class="qi">' + ic('i-users') + '</div>' +
+        '<div><div class="qt">Customers</div><div class="qs">Manage contacts</div></div></div>' +
+    '</div></div>';
+
+  const job = (t, m) => '<div class="jrow"><div class="acc"></div><div class="in">' +
+    '<div class="ji">' + ic('i-out') + '</div>' +
+    '<div style="flex:1;min-width:0"><div class="jt">' + t + '</div><div class="jm">' + m + '</div></div>' +
+    '<div class="jr"><span class="chip">Dispatched</span><span class="ago">4d ago</span></div>' +
+    '</div></div>';
+
+  const recent = '<div><div class="sect"><div class="lt"><div class="bar"></div>' +
+      '<div class="st">Recent Activity</div></div><div class="sa">See all</div></div>' +
+    job('Xiaomi Poco X5', 'ramco') + job('Oppo Reno 8', 'ramco') + '</div>';
+
+  const nav = '<div class="nav">' +
+    '<div class="nb on"><span class="pill">' + ic('i-home') + '</span>Dashboard</div>' +
+    '<div class="nb">' + ic('i-wrench') + 'Jobs</div>' +
+    '<div class="nb">' + ic('i-users') + 'Customers</div>' +
+    '<div class="nb">' + ic('i-cog') + 'Settings</div>' +
+    '</div>';
+
+  return '<div class="bezel"><div class="ph">' + statusBar + header +
+    '<div class="body">' + topBlock + quick + recent + '</div>' + nav + '</div></div>';
+}
+
+function setPeriod(p){ period = p; render(); }
+
+function render(){
+  document.getElementById('stage').innerHTML = phone(ledgerCard(figures()));
+}
+
+render();
+</script>
+</body>
+</html>
