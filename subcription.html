@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<title>Repair Tracks — Subscription Prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   TOKENS — verbatim from repair_tracks/lib/config/design.dart
+   --stage-* are prototype chrome only (the dark room around the phone).
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --brand:#005655; --brandDeep:#003D3C; --brandSoft:#3E8280;
+  --brandTint:#E6EEEE; --accent:#C9F003; --onBrand:#FFFFFF;
+  --ink:#0B1220; --ink2:#55606E; --ink3:#8A94A3;
+  --line:#E4E8EE; --line2:#EFF2F6;
+  --surface:#FFFFFF; --surface2:#F8FAFC; --canvas:#F4F6F9; --sunken:#F1F4F8;
+  --danger:#BE123C; --dangerTint:#FEF2F4;
+  --warn:#C2410C;   --warnTint:#FFF7ED;
+  --good:#047857;   --goodTint:#ECFDF5;
+  --whatsapp:#25D366;
+  --xs:4px; --sm:8px; --md:12px; --lg:16px; --xl:20px; --xxl:28px; --gutter:14px;
+  --rSm:8px; --rMd:12px; --rLg:16px; --rSheet:22px; --rPill:999px;
+  --shCard:0 1px 2px rgba(11,18,32,.039), 0 2px 8px rgba(11,18,32,.051);
+  --shDock:0 -6px 20px rgba(11,18,32,.078);
+  --grad:linear-gradient(135deg,#003D3C 0%,#005655 55%,#3E8280 100%);
+  --stage:#0A0D10; --stage2:#141A20; --stage3:#1F2831; --stage4:#2C3742;
+  --sInk:#E7EDF3; --sInk2:#8B97A5; --sInk3:#5C6773;
+  --ok:#7BD3AE; --bad:#F2A0B4; --wrn:#F0B183;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--stage);color:var(--sInk);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.5;
+  display:flex;justify-content:center;align-items:flex-start;gap:30px;padding:26px;min-height:100vh;flex-wrap:wrap}
+h1,h2,h3,p{margin:0}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+
+/* ── phone ───────────────────────────────────────────────────────────────── */
+.bezel{width:412px;padding:11px;background:#1E262F;border-radius:38px;flex:none;
+  box-shadow:0 24px 50px rgba(0,0,0,.55),0 0 0 1px #2C3640;position:sticky;top:26px}
+.ph{width:390px;height:844px;background:var(--canvas);border-radius:28px;overflow:hidden;
+  position:relative;color:var(--ink);font-size:13px}
+#screen{position:absolute;inset:0;display:flex;flex-direction:column}
+
+.sbar{height:44px;flex:none;background:var(--grad);display:flex;align-items:center;
+  justify-content:space-between;padding:0 22px 0 26px;color:#fff;font-size:12.5px;font-weight:600}
+.sbar .rt{display:flex;gap:5px;align-items:center;opacity:.9}
+.sbar .bars{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.sbar .bars s{display:block;width:2.5px;background:currentColor;border-radius:1px}
+.sbar .bat{width:15px;height:9px;border:1.2px solid currentColor;border-radius:2.5px;padding:1px}
+.sbar .bat i{display:block;height:100%;width:70%;background:currentColor;border-radius:1px}
+
+.hdr{flex:none;background:var(--grad);padding:4px 9px 12px;display:flex;align-items:flex-start;gap:4px}
+.hdr.plain{padding-left:14px}
+.hact{width:44px;height:44px;flex:none;display:grid;place-items:center}
+.hact span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:15px;
+  transition:transform .12s}
+.hact:active span{transform:scale(.9)}
+.hact.filled span{background:var(--accent);border-color:var(--accent);color:var(--brandDeep)}
+.htxt{flex:1;padding:7px 0 0;min-width:0}
+.htitle{font-size:20px;font-weight:700;letter-spacing:-.4px;color:#fff;line-height:1.15}
+.hmeta{font-size:11.5px;font-weight:500;color:rgba(255,255,255,.72);margin-top:2px;
+  font-variant-numeric:tabular-nums}
+
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 14px 20px;
+  display:flex;flex-direction:column;gap:var(--md)}
+.body::-webkit-scrollbar{width:0}
+
+.dock{flex:none;background:var(--surface);border-top:1px solid var(--line);
+  box-shadow:var(--shDock);padding:10px var(--gutter) 14px;position:relative;z-index:2}
+.dcap{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink2);text-align:center;line-height:1.3}
+.dnote{font-size:11.5px;font-weight:500;color:var(--ink3);text-align:center;margin-top:6px;line-height:1.4}
+.dock .btn{margin-top:var(--sm)}
+
+/* ── components ──────────────────────────────────────────────────────────── */
+svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;display:block;flex:none;overflow:visible}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--rLg);
+  box-shadow:var(--shCard);padding:var(--gutter);position:relative;overflow:hidden}
+.card.railed{padding-left:17px}
+.card.railed::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--r,var(--brand))}
+.r-good{--r:var(--good)}.r-warn{--r:var(--warn)}.r-danger{--r:var(--danger)}.r-brand{--r:var(--brand)}
+
+.t-title{font-size:19px;font-weight:700;letter-spacing:-.45px;line-height:1.15;color:var(--ink)}
+.t-head{font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
+.t-body{font-size:13px;font-weight:500;line-height:1.45;color:var(--ink2)}
+.t-sm{font-size:12px;line-height:1.4;color:var(--ink2)}
+.t-label{font-size:12.5px;font-weight:600;letter-spacing:-.1px;color:var(--ink2)}
+.t-meta{font-size:11.5px;font-weight:500;color:var(--ink3);font-variant-numeric:tabular-nums}
+.t-micro{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink3)}
+.t-money{font-size:14px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.t-hero{font-size:27px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.ink{color:var(--ink)}.ink2{color:var(--ink2)}.ink3{color:var(--ink3)}
+.mt2{margin-top:2px}.mt4{margin-top:4px}.mt6{margin-top:6px}.mt8{margin-top:8px}
+.mt10{margin-top:10px}.mt12{margin-top:12px}
+.hair{height:1px;background:var(--line2);margin:11px 0}
+.seclabel{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink3);padding:0 2px 7px;display:flex;justify-content:space-between;align-items:baseline}
+.seclabel span{text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:500}
+
+.btn{height:46px;border-radius:var(--rMd);display:flex;align-items:center;justify-content:center;
+  gap:7px;font-size:14px;font-weight:700;letter-spacing:-.2px;background:var(--brand);color:#fff;
+  width:100%;padding:0 14px;text-align:center;line-height:1.2;transition:transform .1s,opacity .12s}
+.btn:active{transform:scale(.985)}
+.btn.sec{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.wa{background:var(--whatsapp)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.link{font-size:12.5px;font-weight:600;color:var(--brand);text-align:center;
+  padding:11px 0 3px;width:100%;display:block}
+.quietblock{background:var(--sunken);border:1px solid var(--line);border-radius:var(--rMd);
+  padding:11px 13px;text-align:center;font-size:12px;color:var(--ink2);line-height:1.45;margin-top:var(--sm)}
+
+.protobox{border:1.5px dashed var(--line);border-radius:var(--rMd);padding:11px 13px;background:var(--surface2)}
+.protobox .pt{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.protobox .pb{font-size:11.5px;color:var(--ink2);line-height:1.42;margin-top:4px;margin-bottom:10px}
+
+.notice{border-radius:var(--rMd);padding:11px;display:flex;gap:9px;align-items:flex-start;
+  background:var(--brandTint);border:1px solid rgba(0,86,85,.22)}
+.notice .ic{font-size:14px;flex:none;color:var(--brand);padding-top:1px}
+.notice .nt{font-size:12px;font-weight:700;color:var(--ink);line-height:1.3}
+.notice .nb{font-size:12px;line-height:1.42;color:var(--ink2);margin-top:2px}
+.notice.warn{background:var(--warnTint);border-color:rgba(194,65,12,.22)}
+.notice.warn .ic{color:var(--warn)}
+
+.panel{border:1px solid var(--line);border-radius:var(--rMd);background:var(--surface);overflow:hidden}
+.row{min-height:42px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.row .lb{font-size:12.5px;font-weight:600;color:var(--ink2);letter-spacing:-.1px}
+.row .vl{font-size:12.5px;font-weight:600;color:var(--ink);text-align:right}
+.row .vl.mono{font-size:14px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.row.strong .lb{color:var(--ink);font-weight:700}
+.row.strong .vl.mono{font-size:15px}
+.row+.row{border-top:1px solid var(--line2)}
+
+.meter{display:flex;gap:2px;height:7px;border-radius:var(--rPill);overflow:hidden;background:var(--line)}
+.meter s{display:block;height:100%;background:var(--brand);transition:flex .25s}
+.meter s.free{background:var(--line)}
+.meter s.over{background:var(--danger)}
+
+.hero{background:var(--grad);border-radius:var(--rLg);padding:var(--gutter)}
+.hero .hl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.hero .hv{color:var(--accent);margin-top:2px}
+.hero .hn{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px;line-height:1.4}
+
+.strip{border-radius:var(--rMd);padding:8px 12px;display:flex;gap:8px;align-items:center;
+  font-size:12px;line-height:1.4;background:var(--brandTint);color:var(--brand);border:1px solid rgba(0,86,85,.3)}
+.strip.good{background:var(--goodTint);color:var(--good);border-color:rgba(4,120,87,.3)}
+.strip.warn{background:var(--warnTint);color:var(--warn);border-color:rgba(194,65,12,.3)}
+.strip b{font-weight:700}
+
+.two{display:flex;gap:var(--sm)}.two>*{flex:1}
+.cyc{border:1px solid var(--line);border-radius:var(--rMd);background:var(--surface);
+  padding:11px 12px;text-align:left;display:block;transition:.12s}
+.cyc.on{border-color:var(--brand);border-width:1.5px;background:rgba(0,86,85,.045);padding:10.5px 11.5px}
+.cyc .cn{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.cyc .cp{font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-.3px;
+  font-variant-numeric:tabular-nums;margin-top:3px}
+.cyc .cd{font-size:11px;font-weight:500;color:var(--ink3);margin-top:2px}
+.cyc.on .cd{color:var(--good)}
+.stepper{display:flex;align-items:center;gap:var(--md)}
+.stepper .sbtn{width:46px;height:46px;border-radius:var(--rMd);background:var(--sunken);
+  border:1px solid var(--line);display:grid;place-items:center;color:var(--ink);flex:none;transition:.1s}
+.stepper .sbtn:active{transform:scale(.92)}
+.stepper .sbtn[disabled]{opacity:.4;pointer-events:none}
+.stepper .sval{flex:1;text-align:center;font-size:24px;font-weight:700;letter-spacing:-.6px;
+  font-variant-numeric:tabular-nums}
+
+.acc{background:var(--surface);border:1px solid var(--line);border-radius:var(--rLg);
+  box-shadow:var(--shCard);padding:11px 13px;display:flex;align-items:center;gap:10px;width:100%;text-align:left}
+.acc .ic{width:28px;height:28px;border-radius:var(--rSm);background:var(--sunken);
+  display:grid;place-items:center;font-size:14px;flex:none;color:var(--ink2)}
+.acc .gr{flex:1;min-width:0}
+.acc .an{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.acc .ag{font-size:11.5px;color:var(--ink3);margin-top:1px;font-variant-numeric:tabular-nums}
+.acc .ch{color:var(--ink3);font-size:15px}
+
+.inp{height:46px;background:var(--sunken);border-radius:var(--rMd);display:flex;align-items:center;
+  padding:0 13px;font-size:14px;width:100%;color:var(--ink);font-variant-numeric:tabular-nums;
+  border:1.5px solid transparent;outline:none;font-family:inherit;font-weight:600}
+.inp::placeholder{color:var(--ink3);font-weight:400}
+.inp:focus{background:var(--surface);border-color:var(--brand)}
+.pastechip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+  border-radius:var(--rPill);background:rgba(0,86,85,.08);border:1px solid rgba(0,86,85,.28);
+  color:var(--brand);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.proof{display:flex;gap:var(--sm)}
+.proof .big{flex:1;height:46px;border-radius:var(--rMd);border:1.4px dashed var(--line);
+  background:var(--surface2);display:flex;align-items:center;justify-content:center;gap:8px;
+  font-size:13px;font-weight:600;color:var(--ink2)}
+.proof .sq{width:46px;height:46px;border-radius:var(--rMd);border:1px solid var(--line);
+  background:var(--surface);display:grid;place-items:center;font-size:17px;color:var(--ink2);flex:none}
+.shot{border:1px solid var(--line);border-radius:var(--rMd);padding:9px;display:flex;
+  gap:10px;align-items:center;background:var(--surface)}
+.shot .thumb{width:40px;height:52px;border-radius:6px;background:var(--sunken);flex:none;
+  display:grid;place-items:center;font-size:15px;color:var(--ink3)}
+
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--rPill);
+  font-size:10.5px;font-weight:700;letter-spacing:-.05px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0 30px;text-align:center;gap:var(--md)}
+.empty .tile{width:60px;height:60px;border-radius:18px;background:var(--sunken);
+  display:grid;place-items:center;font-size:27px;color:var(--ink3)}
+.empty .et{font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.3px;line-height:1.25}
+.empty .em{font-size:13px;color:var(--ink2);line-height:1.5;max-width:31ch}
+.skel{background:linear-gradient(90deg,var(--line) 25%,var(--surface2) 50%,var(--line) 75%);
+  background-size:400% 100%;border-radius:6px;height:11px;animation:sh 1.4s infinite}
+.skel.t{height:17px}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:0 0}}
+
+.scrim{position:absolute;inset:0;background:rgba(11,18,32,.42);display:flex;flex-direction:column;
+  justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{background:var(--surface);border-radius:var(--rSheet) var(--rSheet) 0 0;
+  display:flex;flex-direction:column;max-height:94%;transform:translateY(14px);
+  transition:transform .24s cubic-bezier(.2,.8,.3,1)}
+.scrim.on .sheet{transform:none}
+.grab{width:36px;height:4px;background:var(--line);border-radius:2px;margin:9px auto 0;flex:none}
+.sh{padding:10px var(--lg) 12px;border-bottom:1px solid var(--line2);flex:none}
+.sh .st{font-size:17px;font-weight:700;letter-spacing:-.4px;color:var(--ink)}
+.sh .ss{font-size:12px;color:var(--ink2);margin-top:2px}
+.sb{padding:14px var(--lg) 8px;display:flex;flex-direction:column;gap:var(--md);overflow-y:auto}
+.sb::-webkit-scrollbar{width:0}
+.sf{padding:12px var(--lg) 16px;border-top:1px solid var(--line2);flex:none}
+.sf .fn{font-size:11.5px;font-weight:500;color:var(--ink3);text-align:center;margin-top:6px;line-height:1.4}
+
+/* top-anchored snack — showAppSnack is an overlay, not a SnackBar */
+.snack{position:absolute;top:52px;left:14px;right:14px;background:var(--ink);color:#fff;
+  border-radius:var(--rMd);padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.4;
+  z-index:20;opacity:0;transform:translateY(-12px);transition:.24s;pointer-events:none;
+  box-shadow:0 4px 12px rgba(11,18,32,.28);display:flex;gap:9px;align-items:center}
+.snack.on{opacity:1;transform:none}
+.snack.good{background:var(--good)}.snack.bad{background:var(--danger)}
+
+/* ── stage / dev tools ───────────────────────────────────────────────────── */
+.stagewrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+.devtoggle{background:var(--stage2);border:1px solid var(--stage3);color:var(--sInk2);
+  font-size:11.5px;font-weight:600;padding:9px 15px;border-radius:999px;transition:.12s}
+.devtoggle:hover{border-color:var(--stage4);color:#fff}
+.devsb .lb{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink3);margin:16px 0 8px}
+.devsb .lb:first-child{margin-top:0}
+.devsb .tagline{font-size:11.5px;color:var(--ink2);line-height:1.55}
+.box{background:var(--stage2);border:1px solid var(--stage3);border-radius:11px;padding:12px 13px}
+.jp{display:flex;flex-wrap:wrap;gap:5px}
+.jp button{background:var(--stage2);border:1px solid var(--stage3);color:var(--sInk2);
+  font-size:11px;font-weight:600;padding:7px 10px;border-radius:7px;line-height:1.2;text-align:left}
+.jp button:hover{border-color:var(--stage4);color:#fff}
+.jp button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.jp button b{display:block;font-weight:700}
+.jp button s{display:block;text-decoration:none;font-size:9.5px;color:var(--sInk3);margin-top:2px;
+  font-family:ui-monospace,Menlo,monospace}
+.jp button.on s{color:rgba(255,255,255,.72)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;
+  border-bottom:1px solid var(--stage3);font-size:11.5px}
+.kv:last-child{border:0}
+.kv .k{color:var(--sInk3)}
+.kv .v{color:var(--sInk);font-weight:600;font-family:ui-monospace,Menlo,monospace;
+  font-size:11px;text-align:right}
+.kv .v.ok{color:var(--ok)}.kv .v.bad{color:var(--bad)}.kv .v.wrn{color:var(--wrn)}
+.adm{background:var(--stage2);border:1px solid var(--stage3);border-radius:11px;padding:13px}
+.adm .ah{font-size:11px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;
+  justify-content:space-between;align-items:center}
+.adm .empty2{font-size:11.5px;color:var(--sInk3);line-height:1.55}
+.adm .li{background:#070A0D;border-radius:8px;padding:10px 11px;font-size:11.5px;margin-bottom:9px}
+.adm .li .t{color:#fff;font-weight:600;margin-bottom:5px}
+.adm .li .d{color:var(--sInk2);line-height:1.6;font-family:ui-monospace,Menlo,monospace;
+  font-size:10.5px;white-space:pre-wrap}
+.arow{display:flex;gap:6px;margin-top:9px}
+.arow button{flex:1;height:32px;border-radius:7px;font-size:11.5px;font-weight:700}
+.arow .ap{background:var(--good);color:#fff}
+.arow .ar{background:transparent;border:1px solid var(--stage4);color:var(--bad)}
+.note{font-size:11px;color:var(--sInk3);line-height:1.6;margin-top:9px}
+.note b{color:var(--sInk2);font-weight:600}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;background:var(--stage3);
+  padding:1px 4px;border-radius:3px;color:#C8D3DF}
+@media(max-width:820px){.bezel{position:static}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<g id="i-back"><path d="M15 18l-6-6 6-6"/></g>
+<g id="i-chev"><path d="M9 18l6-6-6-6"/></g>
+<g id="i-receipt"><path d="M5 3h14v18l-2.3-1.6L14.4 21 12 19.4 9.6 21l-2.3-1.6L5 21V3z"/><path d="M9 8h6M9 12h6"/></g>
+<g id="i-info"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.2"/></g>
+<g id="i-warn"><path d="M12 3.6L2.6 20h18.8L12 3.6z"/><path d="M12 10v4M12 17.2v.2"/></g>
+<g id="i-check"><circle cx="12" cy="12" r="9"/><path d="M8.4 12.2l2.6 2.6 4.8-5"/></g>
+<g id="i-x"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></g>
+<g id="i-clock"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></g>
+<g id="i-lock"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.6a4 4 0 018 0v2.9"/></g>
+<g id="i-users"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 20c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16.4 5.2a3.2 3.2 0 010 6M18 14.8c2 .7 3.4 2.5 3.4 5.2"/></g>
+<g id="i-img"><rect x="3" y="4.5" width="18" height="15" rx="2.2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l4.6-4.4L14 18"/><path d="M14.5 14.4l2.6-2.4L20 15"/></g>
+<g id="i-cam"><path d="M3 8.5h3.4L8 6h8l1.6 2.5H21v11H3v-11z"/><circle cx="12" cy="13.6" r="3.4"/></g>
+<g id="i-chat"><path d="M21 11.6c0 4.2-4 7.6-9 7.6a10 10 0 01-3-.45L4 20.5l1.3-3.4A7.2 7.2 0 013 11.6C3 7.4 7 4 12 4s9 3.4 9 7.6z"/></g>
+<g id="i-refresh"><path d="M20.5 12a8.5 8.5 0 11-2.6-6.1"/><path d="M20.8 4.4v5h-5"/></g>
+<g id="i-plan"><path d="M12 3l2.6 5.4 5.9.85-4.3 4.15 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.25l5.9-.85L12 3z"/></g>
+<g id="i-plus"><path d="M12 5.5v13M5.5 12h13"/></g>
+<g id="i-minus"><path d="M5.5 12h13"/></g>
+<g id="i-wifi"><path d="M2.5 9.2a15 15 0 0119 0M5.8 13a10 10 0 0112.4 0M9.2 16.7a5 5 0 015.6 0"/><path d="M12 20.3v.2"/><path d="M3 3l18 18"/></g>
+</defs></svg>
+
+<div class="stagewrap">
+  <div class="bezel"><div class="ph">
+    <div id="screen"></div>
+    <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+    <div class="snack" id="snack"></div>
+  </div></div>
+  <button class="devtoggle" onclick="openDev()">⚙ Prototype controls — scenarios, clock, admin queue</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   CATALOG — in the real app these are rows in `subscription_plans`, editable
+   from the super admin panel. Nothing about price is hardcoded client-side.
+   ══════════════════════════════════════════════════════════════════════════ */
+const PLANS = {
+  monthly:      {key:'monthly',      product:'base', label:'Monthly', days:30,  price:199},
+  yearly:       {key:'yearly',       product:'base', label:'Yearly',  days:365, price:1800},
+  team_monthly: {key:'team_monthly', product:'team', label:'Monthly', days:30,  price:100},
+  team_yearly:  {key:'team_yearly',  product:'team', label:'Yearly',  days:365, price:100}
+};
+const DAY = 864e5;
+const SEAT = PLANS.team_monthly.price;
+
+let S, cart = null, seq = 4400, current = 'trial';
+
+function blankState(){
+  return {
+    now: new Date(2026, 7, 4, 9, 41),
+    shop: {name:'Rajesh Mobiles', owner:'Rajesh', phone:'+91 98765 43210'},
+    baseExpiry:null, baseLabel:'trial', currentPlan:null,
+    teamExpiry:null, teamSeats:0, activeMembers:0,
+    isSuspended:false, role:'owner', loading:false, error:false,
+    pending:null, rejected:null, draft:null, payments:[],
+    screen:'home', sheetKind:null
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DERIVED — mirrors backend/utils/subscription.js
+   ══════════════════════════════════════════════════════════════════════════ */
+function istDay(d){
+  const ist = new Date(d.getTime() + 5.5*3600e3);
+  return Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate());
+}
+function calDays(exp){ return Math.max(1, Math.round((istDay(exp) - istDay(S.now)) / DAY)); }
+
+function preciseTimeLeft(exp){
+  const ms = exp - S.now;
+  if (ms <= 0) return 'Expired';
+  const mins = Math.floor(ms/6e4), d = Math.floor(mins/1440), h = Math.floor((mins%1440)/60), m = mins%60;
+  if (d >= 1) return h > 0 ? d+' day'+(d===1?'':'s')+' '+h+' hr'+(h===1?'':'s')+' left'
+                           : d+' day'+(d===1?'':'s')+' left';
+  if (h >= 1) return m > 0 ? h+' hr'+(h===1?'':'s')+' '+m+' min left' : h+' hr'+(h===1?'':'s')+' left';
+  return Math.max(1,m)+' min left';
+}
+
+/* effectiveSubscription() */
+function base(){
+  const isActive = !!S.baseExpiry && S.baseExpiry > S.now;
+  const status = !isActive ? 'expired' : (S.baseLabel === 'trial' ? 'trial' : 'active');
+  return {status, isActive, isTrial: status === 'trial',
+          isPaidActive: isActive && status !== 'trial',
+          daysLeft: isActive ? calDays(S.baseExpiry) : 0,
+          timeLeft: isActive ? preciseTimeLeft(S.baseExpiry) : null};
+}
+/* teamState() — derived from BOTH expiries. Nothing stores "suspended". */
+function team(){
+  const baseActive = !!S.baseExpiry && S.baseExpiry > S.now;
+  let status;
+  if (!S.teamExpiry) status = 'none';
+  else if (S.teamExpiry <= S.now) status = 'expired';
+  else status = baseActive ? 'active' : 'suspended';
+  return {status, seats: S.teamSeats, isUsable: status === 'active',
+          daysLeft: (S.teamExpiry && S.teamExpiry > S.now) ? calDays(S.teamExpiry) : 0};
+}
+/* computePeriod() — from the LATER of now and this product's current expiry. */
+function period(planKey, currentExpiry){
+  const from = (currentExpiry && currentExpiry > S.now) ? new Date(currentExpiry) : new Date(S.now);
+  const to = new Date(from);
+  to.setDate(to.getDate() + PLANS[planKey].days);
+  return {from, to};
+}
+
+/* ── format ──────────────────────────────────────────────────────────────── */
+function inr(n){
+  const s = Math.round(Math.abs(n)).toString();
+  if (s.length <= 3) return '₹' + s;
+  const last3 = s.slice(-3);
+  let rest = s.slice(0, -3), out = '';
+  while (rest.length > 2){ out = ',' + rest.slice(-2) + out; rest = rest.slice(0, -2); }
+  return '₹' + rest + out + ',' + last3;
+}
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt  = d => d ? d.getDate()+' '+MON[d.getMonth()]+' '+d.getFullYear() : '—';
+const fmtS = d => d ? d.getDate()+' '+MON[d.getMonth()] : '—';
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const ic = (n, sz) => '<svg class="i" viewBox="0 0 24 24"' +
+  (sz ? ' style="width:'+sz+'px;height:'+sz+'px"' : '') + '><use href="#'+n+'"/></svg>';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const teamKeyFor = k => 'team_' + k;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE CART — holds a TARGET ("how many members after this payment"), never a
+   delta. That is what lets confirmation `set` seats instead of `+=` them.
+   ══════════════════════════════════════════════════════════════════════════ */
+function buildCart(early){
+  const b = base(), t = team();
+  const membersPaid  = t.status === 'suspended';         // already paid — never charge again
+  const planIncluded = !b.isPaidActive || b.daysLeft <= 3 || !!early;
+  const floor = S.activeMembers;
+
+  let target;
+  if (membersPaid)                 target = 0;
+  else if (planIncluded)           target = Math.max(S.teamSeats, floor);   // renewing: keep what you have
+  else if (t.status === 'active')  target = Math.max(S.teamSeats + 1, floor + 1); // adding: one more
+  else                             target = Math.max(floor, 1);             // lapsed: cover your staff
+
+  return {planIncluded, planKey: S.currentPlan || 'monthly', membersPaid,
+          floor, cap: floor + 20, target, stage:'cart', shot:false, txn:'', priceChanged:false};
+}
+function cartTotal(c){
+  const planPart = c.planIncluded ? PLANS[c.planKey].price : 0;
+  const seatPart = c.membersPaid ? 0 : c.target * PLANS[teamKeyFor(c.planKey)].price;
+  return planPart + seatPart;
+}
+const draftMins = () => Math.max(1, Math.round((S.now - S.draft.at) / 6e4));
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PRESENT — a pure function of state. It never reads the status while the
+   data is loading, so "flashes EXPIRED at an active shop" cannot happen.
+   ══════════════════════════════════════════════════════════════════════════ */
+function present(){
+  const b = base(), t = team();
+  const P = {rail:'brand', title: tupleTitle(b,t), meta: tupleMeta(b,t),
+             extra:'', cap:'', act:null, note:'', quiet:'', link:null};
+
+  /* ── orthogonal states first ── */
+  if (S.draft){
+    const mins = draftMins();
+    P.rail = 'warn';
+    P.extra = '<div class="notice warn"><span class="ic">' + ic('i-warn') + '</span><div>' +
+      '<div class="nt">You opened GPay ' + plural(mins,'minute') + ' ago</div>' +
+      '<div class="nb">If the money left your account we just need the screenshot. ' +
+      'If it did not, start again — nothing has been recorded.</div></div></div>';
+    P.cap = 'You have not finished paying';
+    P.act = {label:'Finish paying ' + inr(S.draft.amount), fn:'resumeDraft()'};
+    P.note = 'You paid in GPay ' + plural(mins,'minute') + ' ago — we just need the proof.';
+    P.link = {label:'I did not pay — clear this', fn:'clearDraft()'};
+    return P;
+  }
+  if (S.pending){
+    const p = S.pending;
+    P.rail = b.isPaidActive ? 'good' : 'danger';
+    P.extra = '<div class="panel">' + lineItems(p) + '</div>' +
+      '<div class="t-meta mt10">' + ic('i-clock',13) .replace('<svg','<svg style="display:inline-block;vertical-align:-2px;width:13px;height:13px"') +
+      ' Sent ' + fmtS(p.sentAt) + ' · waiting for approval</div>' +
+      '<div class="protobox mt10"><div class="pt">Prototype shortcut</div>' +
+      '<div class="pb">In the real app, a Repair Tracks admin does this from a separate panel — ' +
+      'not from this screen. Standing in for that here so you can walk the whole flow.</div>' +
+      '<div class="two"><button class="btn sec" style="height:38px;font-size:12.5px" onclick="adminConfirm()">Approve payment</button>' +
+      '<button class="btn sec" style="height:38px;font-size:12.5px;color:var(--danger);border-color:rgba(190,18,60,.35)" onclick="adminReject()">Reject</button></div></div>';
+    P.cap = 'We are checking your payment';
+    P.quiet = 'An admin usually confirms within a few hours.<br>You will get a notification here.';
+    P.link = {label:'Sent the wrong details? Replace this request', fn:'replacePending()'};
+    return P;
+  }
+  if (S.rejected){
+    const r = S.rejected;
+    P.rail = 'danger';
+    P.extra = '<div class="notice warn" style="background:var(--dangerTint);border-color:rgba(190,18,60,.22)">' +
+      '<span class="ic" style="color:var(--danger)">' + ic('i-x') + '</span><div>' +
+      '<div class="nt">Payment not accepted · ' + inr(r.amount) + '</div>' +
+      '<div class="nb">“' + esc(r.reason) + '”<br><span class="t-meta">Reviewed ' + fmtS(r.reviewedAt) + '</span></div>' +
+      '</div></div>';
+    P.cap = 'Your payment was not accepted';
+    P.act = {label:'Try again · ' + inr(r.amount), icon:'i-refresh', fn:'openCart()'};
+    P.note = 'Nothing was charged twice — that request is closed.';
+    return P;
+  }
+
+  /* ── the seven reachable base × team tuples ── */
+  if (b.isTrial){
+    P.rail = 'brand';
+    P.extra = notice('', 'i-info', 'Team members are not included',
+      'A trial does not cover staff logins. Buy a plan and add members from ' + inr(SEAT) + ' each.');
+    P.cap = 'Your trial ends in ' + plural(b.daysLeft,'day');
+    P.act = {label:'Choose a plan · from ' + inr(199), icon:'i-plan', fn:'openCart()'};
+    P.note = 'Pay by UPI. An admin approves it, usually within a few hours.';
+    return P;
+  }
+
+  if (b.status === 'active'){
+    if (t.status === 'expired'){
+      P.rail = 'warn';
+      P.extra = notice('warn','i-warn', plural(S.activeMembers,'staff member') + ' cannot log in',
+        'Renewing brings them straight back — nothing was deleted.');
+      P.cap = plural(S.activeMembers,'staff login') + ' locked out';
+      P.act = {label:'Renew ' + plural(S.activeMembers,'team member') + ' · ' +
+               inr(S.activeMembers * SEAT), icon:'i-users', fn:'openCart()'};
+      P.note = 'Your plan is fine — this only renews the members.';
+      return P;
+    }
+    P.rail = 'good';
+    if (t.status === 'active'){
+      const used = Math.min(S.activeMembers, S.teamSeats);
+      const free = Math.max(0, S.teamSeats - S.activeMembers);
+      const over = Math.max(0, S.activeMembers - S.teamSeats);
+      P.extra = '<div class="meter"><s style="flex:' + (used || 0.001) + '"></s>' +
+        (over ? '<s class="over" style="flex:' + over + '"></s>' : '') +
+        (free ? '<s class="free" style="flex:' + free + '"></s>' : '') + '</div>' +
+        '<div class="t-meta mt6">' + S.activeMembers + ' of ' + S.teamSeats +
+        ' team members in use' + (free ? ' · ' + free + ' free' : '') + '</div>';
+    } else {
+      P.extra = '<div style="display:flex;align-items:center;gap:10px">' +
+        '<span class="ink3" style="font-size:15px">' + ic('i-users') + '</span>' +
+        '<div class="t-body" style="flex:1">No team members yet</div></div>' +
+        '<div class="t-meta mt6">Each staff login is ' + inr(SEAT) + ' for the billing cycle.</div>';
+    }
+    if (b.daysLeft <= 3){
+      P.cap = 'Your plan ends in ' + plural(b.daysLeft,'day');
+      P.act = {label:'Renew · from ' + inr(199), icon:'i-plan', fn:'openCart()'};
+      P.note = t.status === 'active'
+        ? 'Your team members renew with it, on the same cycle.'
+        : inr(199) + ' for the plan' + (S.activeMembers ? ' + ' + inr(SEAT) + ' per member' : '') + '.';
+    } else {
+      P.extra += '<button class="link" style="text-align:left;padding:10px 0 0" onclick="openCart(true)">' +
+        'Change plan or billing cycle · currently ' + PLANS[S.currentPlan || 'monthly'].label + '</button>';
+      P.cap = 'Covered until ' + fmtS(S.baseExpiry);
+      P.act = {label:'Add team members', icon:'i-users', fn:'openCart()'};
+      P.note = 'Renewal opens 3 days before ' + fmtS(S.baseExpiry) + '. You can add members any time.';
+    }
+    return P;
+  }
+
+  /* base expired */
+  P.rail = 'danger';
+  if (t.status === 'suspended'){
+    P.extra = notice('', 'i-info', 'Your team members have not been lost',
+      'They are paid until ' + fmt(S.teamExpiry) + ' and come back the moment the plan is renewed.');
+    P.cap = 'Renew the plan to bring everything back';
+    P.act = {label:'Renew · from ' + inr(199), icon:'i-plan', fn:'openCart()'};
+    P.note = 'Team members do not need paying for again.';
+    return P;
+  }
+  if (t.status === 'expired' && S.activeMembers > 0){
+    const c = buildCart(), tot = cartTotal(c), planPrice = PLANS[c.planKey].price;
+    P.extra = '<div class="panel">' +
+      '<div class="row"><span class="lb">' + PLANS[c.planKey].label + ' plan</span>' +
+        '<span class="vl mono">' + inr(planPrice) + '</span></div>' +
+      '<div class="row"><span class="lb">' + plural(c.target,'team member') + ' × ' + inr(SEAT) + '</span>' +
+        '<span class="vl mono">' + inr(tot - planPrice) + '</span></div>' +
+      '<div class="row strong"><span class="lb">One payment</span>' +
+        '<span class="vl mono">' + inr(tot) + '</span></div></div>';
+    P.cap = 'Renew both to get back in';
+    P.act = {label:'Renew plan + ' + plural(c.target,'member') + ' · ' + inr(tot), icon:'i-plan', fn:'openCart()'};
+    P.note = 'One payment covers both.';
+    return P;
+  }
+  P.cap = 'Your shop is locked until you renew';
+  P.act = {label:'Renew · from ' + inr(199), icon:'i-plan', fn:'openCart()'};
+  P.note = 'Everything is exactly where you left it.';
+  return P;
+}
+
+function tupleTitle(b,t){
+  const plan = S.currentPlan ? PLANS[S.currentPlan].label : 'Monthly';
+  if (b.isTrial) return 'Free trial';
+  if (b.status === 'active'){
+    if (t.status === 'active')  return plan + ' plan<br>+ ' + plural(S.teamSeats,'team member');
+    if (t.status === 'expired') return 'Plan active ·<br>team members expired';
+    return plan + ' plan';
+  }
+  if (t.status === 'expired' && S.teamSeats) return 'Your plan and team members have both expired';
+  return 'Your plan has expired';
+}
+function tupleMeta(b,t){
+  if (b.isTrial) return b.timeLeft + ' · ends ' + fmt(S.baseExpiry);
+  if (b.status === 'active'){
+    if (t.status === 'active'){
+      const same = S.teamExpiry && Math.abs(S.teamExpiry - S.baseExpiry) < DAY;
+      return same ? 'Both covered until ' + fmt(S.baseExpiry) + ' · ' + b.timeLeft
+                  : 'Plan until ' + fmtS(S.baseExpiry) + ' · members until ' + fmtS(S.teamExpiry);
+    }
+    if (t.status === 'expired')
+      return 'Plan until ' + fmtS(S.baseExpiry) + ' · member logins ended ' + fmtS(S.teamExpiry);
+    return 'Covered until ' + fmt(S.baseExpiry) + ' · ' + b.timeLeft;
+  }
+  if (t.status === 'suspended')
+    return 'Ended ' + fmtS(S.baseExpiry) + ' · your ' + S.activeMembers + ' team members are frozen with it';
+  if (t.status === 'expired' && S.teamSeats)
+    return 'Plan ended ' + fmtS(S.baseExpiry) + ' · members ended ' + fmtS(S.teamExpiry);
+  const ago = Math.max(1, Math.round((S.now - S.baseExpiry)/DAY));
+  return 'Ended ' + fmt(S.baseExpiry) + ' · ' + plural(ago,'day') + ' ago';
+}
+const notice = (kind, icon, t, b) =>
+  '<div class="notice ' + kind + '"><span class="ic">' + ic(icon) + '</span><div>' +
+  '<div class="nt">' + t + '</div><div class="nb">' + b + '</div></div></div>';
+
+function lineItems(p){
+  const planPrice = p.planKey ? PLANS[p.planKey].price : 0;
+  let out = '';
+  if (p.planKey)
+    out += '<div class="row"><span class="lb">' + PLANS[p.planKey].label + ' plan</span>' +
+           '<span class="vl mono">' + inr(planPrice) + '</span></div>';
+  if (p.memberTarget > 0)
+    out += '<div class="row"><span class="lb">' + plural(p.memberTarget,'team member') + ' × ' + inr(SEAT) + '</span>' +
+           '<span class="vl mono">' + inr(p.amount - planPrice) + '</span></div>';
+  out += '<div class="row strong"><span class="lb">Waiting for approval</span>' +
+         '<span class="vl mono">' + inr(p.amount) + '</span></div>';
+  out += '<div class="row"><span class="lb">Proof sent</span><span class="vl">' +
+         (p.shot ? 'Screenshot' : 'Transaction ID') + '</span></div>';
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCREENS
+   ══════════════════════════════════════════════════════════════════════════ */
+const statusBar = () => '<div class="sbar">9:41<span class="rt"><span class="bars">' +
+  '<s style="height:4px"></s><s style="height:6px"></s><s style="height:8px"></s><s style="height:9px"></s>' +
+  '</span><span class="bat"><i></i></span></span></div>';
+
+function header(title, meta, opts){
+  const o = opts || {};
+  return '<div class="hdr' + (o.back ? '' : ' plain') + '">' +
+    (o.back ? '<button class="hact" onclick="toast(\'Back — not wired in this prototype\')"><span>' + ic('i-back') + '</span></button>' : '') +
+    '<div class="htxt"><div class="htitle">' + title + '</div><div class="hmeta">' + meta + '</div></div>' +
+    '<button class="hact" onclick="resetFlow()" title="Reset the flow"><span>' + ic('i-refresh') + '</span></button>' +
+    (o.action === false ? '' : '<button class="hact filled" onclick="openBilling()"><span>' + ic('i-receipt') + '</span></button>') +
+    '</div>';
+}
+
+function screenHome(){
+  /* Walls first — the same precedence as MainShell and subscriptionMiddleware:
+     403 suspension outranks 402 expiry, which outranks everything else. */
+  if (S.isSuspended) return wallSuspended();
+  if (S.role === 'member'){
+    const b = base(), t = team();
+    if (!b.isActive || t.status !== 'active') return wallAskOwner();
+    return wallOwnerOnly();
+  }
+  if (S.loading) return screenLoading();
+  if (S.error)   return screenError();
+
+  const P = present();
+  const accs =
+    '<button class="acc" onclick="openBilling()"><span class="ic">' + ic('i-receipt') + '</span>' +
+      '<div class="gr"><div class="an">Payments</div><div class="ag">' + billingTag() + '</div></div>' +
+      '<span class="ch">' + ic('i-chev') + '</span></button>' +
+    '<button class="acc" onclick="toast(\'UPI to repairtracks@okhdfcbank · an admin approves every payment\')">' +
+      '<span class="ic">' + ic('i-info') + '</span>' +
+      '<div class="gr"><div class="an">How paying works</div><div class="ag">UPI · an admin approves it</div></div>' +
+      '<span class="ch">' + ic('i-chev') + '</span></button>';
+
+  return statusBar() + header('Subscription', S.shop.name) +
+    '<div class="body">' +
+      '<div class="card railed r-' + P.rail + '">' +
+        '<div class="t-title">' + P.title + '</div>' +
+        '<div class="t-meta mt4">' + P.meta + '</div>' +
+        (P.extra ? '<div class="hair"></div>' + P.extra : '') +
+      '</div>' + accs +
+    '</div>' +
+    '<div class="dock">' +
+      '<div class="dcap">' + P.cap + '</div>' +
+      (P.act ? '<button class="btn" onclick="' + P.act.fn + '">' + (P.act.icon ? ic(P.act.icon) : '') + P.act.label + '</button>' : '') +
+      (P.quiet ? '<div class="quietblock">' + P.quiet + '</div>' : '') +
+      (P.note ? '<div class="dnote">' + P.note + '</div>' : '') +
+      (P.link ? '<button class="link" onclick="' + P.link.fn + '">' + P.link.label + '</button>' : '') +
+    '</div>';
+}
+
+const screenLoading = () => statusBar() + header('Subscription', S.shop.name, {action:false}) +
+  '<div class="body">' +
+    '<div class="card"><div class="skel t" style="width:62%"></div>' +
+      '<div class="skel mt10" style="width:80%"></div><div class="hair"></div>' +
+      '<div class="skel" style="height:7px;border-radius:999px"></div>' +
+      '<div class="skel mt10" style="width:45%"></div></div>' +
+    '<div class="acc"><span class="ic"></span><div class="gr">' +
+      '<div class="skel" style="width:40%"></div>' +
+      '<div class="skel mt6" style="width:64%;height:9px"></div></div></div>' +
+  '</div>' +
+  '<div class="dock"><div class="dcap">Checking your subscription</div>' +
+    '<div class="quietblock">One moment…</div></div>';
+
+const screenError = () => statusBar() + header('Subscription', S.shop.name, {action:false}) +
+  '<div class="empty">' +
+    '<div class="tile">' + ic('i-wifi', 27) + '</div>' +
+    '<div class="et">Could not load your subscription</div>' +
+    '<div class="em">The server did not answer. This can take up to a minute if the app has not been opened in a while.</div>' +
+  '</div>' +
+  '<div class="dock"><div class="dcap">We could not reach the server</div>' +
+    '<button class="btn" onclick="retry()">' + ic('i-refresh') + 'Try again</button>' +
+    '<div class="dnote">Your plan has not changed — this is just the app failing to check.</div></div>';
+
+const wallSuspended = () => statusBar() + header('Account locked', S.shop.name, {action:false}) +
+  '<div class="empty">' +
+    '<div class="tile" style="background:var(--dangerTint);color:var(--danger)">' + ic('i-lock',26) + '</div>' +
+    '<div class="et">Your account is locked</div>' +
+    '<div class="em">A Repair Tracks administrator has suspended this shop. Paying will not unlock it — talk to us and we will sort it out.</div>' +
+  '</div>' +
+  '<div class="dock"><div class="dcap">Only support can unlock this</div>' +
+    '<button class="btn wa" onclick="toast(\'Opens WhatsApp to Repair Tracks support\')">' + ic('i-chat') + 'Message us on WhatsApp</button>' +
+    '<button class="link" onclick="toast(\'Logged out\')">Log out</button></div>';
+
+function wallAskOwner(){
+  const b = base();
+  const title = b.isActive ? 'Your team login has lapsed' : 'The shop subscription has ended';
+  return statusBar() + header('Subscription ended', S.shop.name + ' · signed in as Priya', {action:false}) +
+    '<div class="empty">' +
+      '<div class="tile" style="background:var(--warnTint);color:var(--warn)">' + ic('i-clock',26) + '</div>' +
+      '<div class="et">' + title + '</div>' +
+      '<div class="em">Only the owner can renew it. Your work is safe — every job comes back exactly as you left it the moment they do.</div>' +
+    '</div>' +
+    '<div class="dock"><div class="dcap">Only the shop owner can renew</div>' +
+      '<button class="btn wa" onclick="toast(\'Opens WhatsApp to ' + S.shop.owner + ' · ' + S.shop.phone + '\')">' +
+        ic('i-chat') + 'Message ' + S.shop.owner + ' on WhatsApp</button>' +
+      '<button class="link" onclick="toast(\'Logged out\')">Log out</button></div>';
+}
+
+const wallOwnerOnly = () => statusBar() + header('Subscription', S.shop.name, {back:true, action:false}) +
+  '<div class="empty">' +
+    '<div class="tile">' + ic('i-lock',26) + '</div>' +
+    '<div class="et">Only the shop owner can manage the subscription</div>' +
+    '<div class="em">Ask ' + S.shop.owner + ' to open Settings → Subscription. Nothing here affects your work.</div>' +
+  '</div>' +
+  '<div class="dock"><div class="dcap">Nothing for you to do here</div>' +
+    '<button class="btn sec" onclick="toast(\'Back to jobs\')">' + ic('i-back') + 'Back to jobs</button>' +
+    '<div class="dnote">Your logins and permissions are managed by the owner.</div></div>';
+
+/* The GPay hand-off — deliberately not our design. The seam IS the design. */
+function screenGpay(){
+  const amt = cart ? cartTotal(cart) : 0;
+  const what = !cart ? 'Payment'
+    : cart.membersPaid ? PLANS[cart.planKey].label + ' plan renewal'
+    : !cart.planIncluded ? plural(cart.target,'team member') + ' renewal'
+    : PLANS[cart.planKey].label + ' plan' + (cart.target ? ' + ' + plural(cart.target,'member') : '');
+
+  return '<div style="position:absolute;inset:0;background:#F1F3F4;display:flex;flex-direction:column;filter:grayscale(1) contrast(.95)">' +
+    '<div class="sbar" style="background:#3A4048">9:41<span class="rt"><span class="bars">' +
+      '<s style="height:4px"></s><s style="height:6px"></s><s style="height:8px"></s><s style="height:9px"></s>' +
+      '</span><span class="bat"><i></i></span></span></div>' +
+    '<div style="height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid #DDE1E6">' +
+      '<button style="width:30px;height:30px;display:grid;place-items:center;color:#3C4043;flex:none" onclick="gpayDone(false)">' + ic('i-back',18) + '</button>' +
+      '<div style="font-size:15px;font-weight:700;color:#3C4043">Google Pay</div>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:24px 22px 8px;display:flex;flex-direction:column;gap:22px">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #DDE1E6;' +
+          'display:grid;place-items:center;font-size:16px;font-weight:700;color:#5A6270;flex:none">RT</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:14px;font-weight:700;color:#22262C">Repair Tracks</div>' +
+          '<div style="font-size:12px;color:#5A6270;margin-top:1px">repairtracks@okhdfcbank</div>' +
+        '</div>' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.04em;color:#1A7F4B;background:#E6F4EA;' +
+          'padding:4px 9px;border-radius:999px;flex:none">VERIFIED</div>' +
+      '</div>' +
+      '<div style="text-align:center;padding:20px 0;border-top:1px solid #E1E4E7;border-bottom:1px solid #E1E4E7">' +
+        '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5A6270">You are paying</div>' +
+        '<div style="font-size:38px;font-weight:700;letter-spacing:-1px;color:#22262C;margin-top:6px;' +
+          'font-variant-numeric:tabular-nums">' + inr(amt) + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px">' +
+        '<div style="display:flex;justify-content:space-between"><span style="color:#5A6270">For</span>' +
+          '<span style="font-weight:600;color:#22262C">' + what + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between"><span style="color:#5A6270">Reference note</span>' +
+          '<span style="font-weight:600;color:#22262C;font-variant-numeric:tabular-nums">RT-RAJESH-8F42</span></div>' +
+        '<div style="display:flex;justify-content:space-between"><span style="color:#5A6270">Paying from</span>' +
+          '<span style="font-weight:600;color:#22262C">HDFC Bank •• 4471</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="flex:none;padding:14px 22px 18px;border-top:1px solid #DDE1E6">' +
+      '<button style="width:100%;height:50px;border-radius:26px;background:#3C4043;color:#fff;' +
+        'font-size:14.5px;font-weight:700" onclick="gpayDone(true)">Confirm payment</button>' +
+      '<button style="width:100%;text-align:center;font-size:12.5px;color:#5A6270;font-weight:600;' +
+        'margin-top:12px" onclick="gpayDone(false)">Cancel</button>' +
+      '<div style="text-align:center;font-size:10.5px;color:#8A9099;margin-top:14px">Google Pay · not part of Repair Tracks</div>' +
+    '</div>' +
+  '</div>';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHEETS
+   ══════════════════════════════════════════════════════════════════════════ */
+function sheetCart(){
+  const c = cart, tot = cartTotal(c), seat = PLANS[teamKeyFor(c.planKey)].price;
+
+  const title = !c.planIncluded ? 'Renew your team members'
+              : c.membersPaid   ? 'Renew your plan'
+              : 'What you are paying for';
+  const sub   = !c.planIncluded ? 'Your plan is already covered until ' + fmtS(S.baseExpiry)
+              : c.membersPaid   ? 'Your ' + plural(S.activeMembers,'team member') + ' come back with it'
+              : 'Repair Tracks · ' + S.shop.name;
+  const heroNote = c.membersPaid
+      ? PLANS[c.planKey].days + ' days · unfreezes your ' + plural(S.activeMembers,'staff login') + ' immediately.'
+      : !c.planIncluded
+      ? plural(c.target,'staff login') + ', ' + PLANS[c.planKey].label.toLowerCase() + ' — matching your plan.'
+      : 'Covers your shop' + (c.target ? ' and ' + plural(c.target,'staff login') : '') +
+        ' for ' + PLANS[c.planKey].days + ' days.';
+
+  let cycle = '';
+  if (c.planIncluded){
+    cycle = '<div><div class="seclabel">Billing cycle</div><div class="two">' +
+      ['monthly','yearly'].map(k =>
+        '<button class="cyc ' + (c.planKey === k ? 'on' : '') + '" onclick="setCycle(\'' + k + '\')">' +
+          '<div class="cn">' + PLANS[k].label + '</div>' +
+          '<div class="cp">' + inr(PLANS[k].price) + '</div>' +
+          '<div class="cd">' + PLANS[k].days + ' days' +
+            (k === 'yearly' ? ' · save ' + inr(199*12 - 1800) : '') + '</div>' +
+        '</button>').join('') +
+      '</div></div>';
+  }
+
+  const members = c.membersPaid
+    ? notice('', 'i-users', 'Nothing to pay for your members',
+        'Your ' + plural(S.activeMembers,'team member') + ' are paid until ' + fmt(S.teamExpiry) +
+        '. They unfreeze the moment this is approved.')
+    : '<div><div class="seclabel">Team members<span>' + inr(seat) + ' each</span></div>' +
+      '<div class="stepper">' +
+        '<button class="sbtn" ' + (c.target <= c.floor || c.target <= 0 ? 'disabled' : '') +
+          ' onclick="step(-1)">' + ic('i-minus',19) + '</button>' +
+        '<div class="sval">' + c.target + '</div>' +
+        '<button class="sbtn" ' + (c.target >= c.cap ? 'disabled' : '') +
+          ' onclick="step(1)">' + ic('i-plus',19) + '</button>' +
+      '</div>' +
+      (c.target ? '<div class="meter mt12"><s style="flex:' + c.target + '"></s></div>' : '') +
+      '<div class="t-meta mt6">' + seatLine(c) + '</div></div>';
+
+  const cycleLock = (!c.planIncluded && !c.membersPaid)
+    ? notice('', 'i-info', PLANS[c.planKey].label + ', to match your plan',
+        'Members always run on the same cycle as the plan, so both renew together.')
+    : '';
+
+  const strip = c.priceChanged
+    ? '<div class="strip warn">' + ic('i-warn',15) + '<div>The price changed while you were paying — it is now <b>' +
+        inr(tot + 50) + '</b>. Pay the difference or message us.</div></div>'
+    : (tot <= 0)
+    ? '<div class="strip">' + ic('i-info',15) + '<div>Pick how many staff need a login.</div></div>'
+    : '<div class="strip good">' + ic('i-check',15) + '<div>' + sumLine(c, tot) + '</div></div>';
+
+  return '<div class="grab"></div>' +
+    '<div class="sh"><div class="st">' + title + '</div><div class="ss">' + sub + '</div></div>' +
+    '<div class="sb">' +
+      '<div class="hero"><div class="hl">You pay now</div>' +
+        '<div class="t-hero hv">' + inr(tot) + '</div><div class="hn">' + heroNote + '</div></div>' +
+      cycle + members + cycleLock + strip +
+    '</div>' +
+    '<div class="sf">' +
+      '<button class="btn" ' + (tot <= 0 ? 'disabled' : '') + ' onclick="payInGpay()">Pay ' + inr(tot) + ' in GPay</button>' +
+      '<div class="fn">GPay will show a success screen — screenshot it.<br>We will ask for it when you come back.</div>' +
+    '</div>';
+}
+function seatLine(c){
+  if (c.target === 0) return 'No team members — ₹0';
+  if (team().status === 'active')
+    return 'You have ' + plural(S.teamSeats,'seat') + ' today · all ' + c.target + ' covered after this';
+  if (S.activeMembers)
+    return 'You have ' + plural(S.activeMembers,'staff member') + ' today · all ' +
+           Math.min(c.target, S.activeMembers) + ' stay covered';
+  return plural(c.target,'staff login');
+}
+function sumLine(c, tot){
+  const seat = PLANS[teamKeyFor(c.planKey)].price;
+  if (c.membersPaid)    return PLANS[c.planKey].label + ' plan = <b>' + inr(tot) + '</b> · members ₹0';
+  if (!c.planIncluded)  return c.target + ' × ' + inr(seat) + ' = <b>' + inr(tot) + '</b>';
+  if (!c.target)        return PLANS[c.planKey].label + ' plan = <b>' + inr(tot) + '</b>';
+  return 'Plan <b>' + inr(PLANS[c.planKey].price) + '</b> + ' + c.target + ' × ' + inr(seat) +
+         ' <b>' + inr(c.target * seat) + '</b> = <b>' + inr(tot) + '</b>';
+}
+
+function sheetProof(){
+  const c = cart, tot = cartTotal(c);
+  const canSubmit = c.shot || c.txn.replace(/\D/g,'').length >= 10;
+  const proofBlock = c.shot
+    ? '<div class="shot"><div class="thumb">' + ic('i-img',17) + '</div>' +
+        '<div style="flex:1"><div class="t-label ink">Screenshot attached</div>' +
+        '<div class="t-meta mt2">IMG_20260804_0941.jpg · just now</div></div>' +
+        '<div style="color:var(--good);font-size:17px">' + ic('i-check') + '</div></div>' +
+      '<div class="proof mt8"><button class="big" onclick="attach()">' + ic('i-img',16) +
+        'Choose a different one</button>' +
+        '<button class="sq" onclick="attach()">' + ic('i-cam',17) + '</button></div>'
+    : '<div class="proof"><button class="big" onclick="attach()">' + ic('i-img',16) +
+        'Latest screenshot</button>' +
+        '<button class="sq" onclick="attach()">' + ic('i-cam',17) + '</button></div>';
+
+  return '<div class="grab"></div>' +
+    '<div class="sh"><div class="st">Confirm your payment</div>' +
+      '<div class="ss">' + inr(tot) + ' to repairtracks@okhdfcbank</div></div>' +
+    '<div class="sb">' +
+      '<div class="strip">' + ic('i-info',15) +
+        '<div>Back from GPay. Send us the proof and we will get it approved.</div></div>' +
+      '<div><div class="seclabel">Proof of payment<span>either one is enough</span></div>' + proofBlock + '</div>' +
+      '<div><div class="t-label">Transaction ID <span class="ink3" style="font-weight:500">— optional</span></div>' +
+        (c.txn ? '' : '<div class="mt6"><button class="pastechip" onclick="paste()">Paste 438290175566</button></div>') +
+        '<input class="inp mt8" id="txn" placeholder="Enter the UPI reference" value="' + esc(c.txn) +
+          '" oninput="cart.txn=this.value;refreshSheet(true)"></div>' +
+      '<button class="link" onclick="abandon()">I did not actually pay</button>' +
+    '</div>' +
+    '<div class="sf">' +
+      '<button class="btn" ' + (canSubmit ? '' : 'disabled') + ' onclick="submitPayment()">Submit ' +
+        inr(tot) + ' for approval</button>' +
+      '<div class="fn">' + (canSubmit ? 'An admin usually confirms within a few hours.'
+        : 'Attach a screenshot or enter the transaction ID.') + '</div>' +
+    '</div>';
+}
+
+function sheetBilling(){
+  if (!S.payments.length)
+    return '<div class="grab"></div>' +
+      '<div class="sh"><div class="st">Payments</div><div class="ss">Nothing yet</div></div>' +
+      '<div class="sb" style="padding-bottom:30px"><div style="text-align:center;padding:26px 10px">' +
+        '<div class="t-head">No payments yet</div>' +
+        '<div class="t-sm mt6">Your first payment shows here the moment you send it for approval.</div>' +
+      '</div></div>';
+
+  const confirmedTotal = S.payments.filter(p => p.status === 'confirmed').reduce((a,p) => a + p.amount, 0);
+  const rows = S.payments.map(p => {
+    const col = p.status === 'confirmed' ? 'good' : p.status === 'rejected' ? 'danger' : 'brand';
+    const what = [p.planKey ? PLANS[p.planKey].label + ' plan' : null,
+                  p.memberTarget ? plural(p.memberTarget,'member') : null]
+                 .filter(Boolean).join(' + ') || 'Adjustment';
+    return '<div class="row" style="padding:13px 2px;align-items:flex-start">' +
+      '<div style="flex:1;padding-right:10px">' +
+        '<div class="t-label ink">' + what + '</div>' +
+        '<div class="t-meta mt2">' + fmt(p.sentAt) + (p.periodTo ? ' · covers to ' + fmtS(p.periodTo) : '') + '</div>' +
+        (p.reason ? '<div class="t-sm mt6" style="color:var(--danger)">“' + esc(p.reason) + '”</div>' +
+          '<button class="link" style="text-align:left;padding:8px 0 0" onclick="closeSheet();openCart()">Try this payment again</button>' : '') +
+      '</div>' +
+      '<div style="text-align:right"><div class="t-money">' + inr(p.amount) + '</div>' +
+        '<span class="pill mt4" style="background:var(--' + col + 'Tint);color:var(--' + col + ')">' +
+        p.status.toUpperCase() + '</span></div></div>';
+  }).join('');
+
+  return '<div class="grab"></div>' +
+    '<div class="sh"><div class="st">Payments</div><div class="ss">' +
+      plural(S.payments.length,'payment') + ' · ' + inr(confirmedTotal) + ' confirmed</div></div>' +
+    '<div class="sb" style="gap:0;padding-bottom:22px">' + rows + '</div>';
+}
+function billingTag(){
+  if (!S.payments.length) return 'No payments yet';
+  const last = S.payments[0];
+  return plural(S.payments.length,'payment') + ' · last ' + inr(last.amount) + ' on ' + fmtS(last.sentAt);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ACTIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+function openCart(early){ cart = buildCart(early); S.sheetKind = 'cart'; render(); }
+function setCycle(k){ cart.planKey = k; refreshSheet(); }
+function step(d){
+  const n = cart.target + d;
+  if (d < 0 && n < cart.floor){
+    toast('You have ' + plural(S.activeMembers,'staff member') + ' — you cannot buy fewer logins than that', 'bad');
+    return;
+  }
+  if (n > cart.cap){ toast('Need more than ' + cart.cap + '? Message us and we will sort it', 'bad'); return; }
+  cart.target = Math.max(0, n);
+  refreshSheet();
+}
+function payInGpay(){
+  S.draft = {amount: cartTotal(cart), at: new Date(S.now)};
+  S.screen = 'gpay';
+  render();
+}
+function gpayDone(paid){
+  S.screen = 'home';
+  if (!paid){
+    S.draft = null; cart = null; S.sheetKind = null; render();
+    toast('Payment cancelled — nothing was recorded');
+    return;
+  }
+  cart.stage = 'proof'; S.sheetKind = 'proof'; render();
+  toast('Back from GPay — attach the screenshot and we will send it for approval', 'good');
+}
+function attach(){ cart.shot = true; refreshSheet(); toast('Screenshot attached', 'good'); }
+function paste(){ cart.txn = '438290175566'; refreshSheet(); }
+function abandon(){ S.draft = null; cart = null; S.sheetKind = null; render(); toast('Cleared — nothing was recorded'); }
+function resumeDraft(){ if (!cart) cart = buildCart(); cart.stage = 'proof'; S.sheetKind = 'proof'; render(); }
+function clearDraft(){ S.draft = null; cart = null; render(); toast('Cleared'); }
+function replacePending(){
+  cart = buildCart(); cart.stage = 'proof'; cart.shot = true;
+  S.sheetKind = 'proof'; render();
+  toast('The pending request is updated, never duplicated — one per product');
+}
+
+function submitPayment(){
+  const c = cart, amount = cartTotal(c);
+  const p = {
+    id: ++seq,
+    planKey: c.planIncluded ? c.planKey : null,
+    teamPlanKey: c.membersPaid ? null : teamKeyFor(c.planKey),
+    memberTarget: c.membersPaid ? 0 : c.target,
+    membersPaid: c.membersPaid,
+    seatMode: 'set',
+    amount, shot: c.shot, txn: c.txn,
+    status: 'pending', sentAt: new Date(S.now)
+  };
+  p.product = (p.planKey && p.memberTarget) ? 'combined' : p.planKey ? 'base' : 'team';
+  S.pending = p; S.rejected = null; S.draft = null; cart = null; S.sheetKind = null;
+  S.payments.unshift(p);
+  render();
+  toast('Sent for approval — an admin will confirm it shortly', 'good');
+}
+
+/* confirmPayment() — both halves inside ONE transaction. */
+function adminConfirm(){
+  const p = S.pending;
+  if (!p) return;
+  if (p.planKey){
+    const per = period(p.planKey, S.baseExpiry);
+    S.baseExpiry = per.to; S.baseLabel = 'active'; S.currentPlan = p.planKey;
+    p.periodTo = per.to;
+  }
+  if (p.memberTarget > 0){
+    /* The team gate is checked against the NEW base expiry, not the row as read.
+       Get this wrong and every combined payment from an expired shop is refused. */
+    if (!(S.baseExpiry && S.baseExpiry > S.now)){
+      toast('Confirm the Base Plan payment first', 'bad');
+      return;
+    }
+    const per = period(p.teamPlanKey, S.teamExpiry);
+    S.teamExpiry = per.to;
+    S.teamSeats = p.memberTarget;      /* SET — not `+=`. This is the inflation fix. */
+    if (!p.periodTo) p.periodTo = per.to;
+  }
+  p.status = 'confirmed';
+  S.pending = null;
+  render();
+  toast('Approved — subscription active', 'good');
+}
+function adminReject(){
+  const p = S.pending;
+  if (!p) return;
+  p.status = 'rejected';
+  p.reason = p.shot ? 'Screenshot shows ' + inr(199) + ', but this request is for ' + inr(p.amount) + '.'
+                    : 'We could not find this transaction ID. Please send a screenshot.';
+  p.reviewedAt = new Date(S.now);
+  S.rejected = p; S.pending = null;
+  render();
+  toast('Payment rejected', 'bad');
+}
+function travel(days){
+  S.now = new Date(S.now.getTime() + days*DAY);
+  render();
+  const b = base(), t = team();
+  toast(plural(days,'day') + ' later · plan ' + b.status + ' · team ' + t.status);
+}
+function retry(){
+  S.error = false; S.loading = true; render();
+  setTimeout(function(){ S.loading = false; render(); }, 900);
+}
+function openBilling(){ S.sheetKind = 'billing'; render(); }
+function closeSheet(){ S.sheetKind = null; render(); }
+
+/* ── plumbing ────────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+let snackT;
+function toast(msg, kind){
+  const el = $('snack');
+  el.className = 'snack on ' + (kind === 'good' ? 'good' : kind === 'bad' ? 'bad' : '');
+  el.innerHTML = ic(kind === 'bad' ? 'i-warn' : kind === 'good' ? 'i-check' : 'i-info', 16) + '<div>' + msg + '</div>';
+  clearTimeout(snackT);
+  snackT = setTimeout(function(){ el.className = 'snack'; }, 3400);
+}
+function refreshSheet(keepFocus){
+  const f = document.activeElement;
+  const pos = (f && f.id === 'txn') ? f.selectionStart : null;
+  $('sheet').innerHTML = cart.stage === 'proof' ? sheetProof() : sheetCart();
+  if (keepFocus && pos != null){
+    const n = $('txn');
+    if (n){ n.focus(); n.setSelectionRange(pos, pos); }
+  }
+}
+function render(){
+  $('screen').innerHTML = S.screen === 'gpay' ? screenGpay() : screenHome();
+  if (S.sheetKind && S.screen !== 'gpay'){
+    $('sheet').innerHTML = S.sheetKind === 'billing' ? sheetBilling()
+      : S.sheetKind === 'dev' ? sheetDev()
+      : (cart && cart.stage === 'proof') ? sheetProof() : sheetCart();
+    $('scrim').classList.add('on');
+  } else {
+    $('scrim').classList.remove('on');
+  }
+}
+function openDev(){ S.sheetKind = 'dev'; render(); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DEV TOOLS — prototype scaffolding, not part of the app. Lives in its own
+   sheet instead of a permanent sidebar, so the deliverable is one screen.
+   ══════════════════════════════════════════════════════════════════════════ */
+function D(days){ const x = new Date(2026,7,4,9,41); x.setDate(x.getDate() + days); return x; }
+const SCENARIOS = [
+  {id:'trial',     n:'Free trial',       c:'base=trial · team=none',
+   f:function(s){ s.baseExpiry=D(4); s.baseLabel='trial'; }},
+  {id:'activeNo',  n:'Paid, no staff',   c:'base=active · team=none',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly'; }},
+  {id:'both',      n:'Plan + 5 members', c:'base=active · team=active',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly';
+                  s.teamExpiry=D(39); s.teamSeats=5; s.activeMembers=3; }},
+  {id:'renewSoon', n:'2 days left',      c:'renewal window open',
+   f:function(s){ s.baseExpiry=D(2); s.baseLabel='active'; s.currentPlan='monthly';
+                  s.teamExpiry=D(2); s.teamSeats=3; s.activeMembers=3; }},
+  {id:'teamGone',  n:'Members expired',  c:'base=active · team=expired',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly';
+                  s.teamExpiry=D(-33); s.teamSeats=3; s.activeMembers=3; }},
+  {id:'expired',   n:'Plan expired',     c:'base=expired · team=none',
+   f:function(s){ s.baseExpiry=D(-33); s.baseLabel='active'; s.currentPlan='monthly'; }},
+  {id:'frozen',    n:'Members frozen',   c:'base=expired · team=suspended',
+   f:function(s){ s.baseExpiry=D(-33); s.baseLabel='active'; s.currentPlan='monthly';
+                  s.teamExpiry=D(30); s.teamSeats=3; s.activeMembers=3; }},
+  {id:'bothGone',  n:'Both expired',     c:'base=expired · team=expired',
+   f:function(s){ s.baseExpiry=D(-33); s.baseLabel='active'; s.currentPlan='monthly';
+                  s.teamExpiry=D(-38); s.teamSeats=3; s.activeMembers=3; }},
+  {id:'suspended', n:'Admin lockout',    c:'is_suspended · HTTP 403',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly'; s.isSuspended=true; }},
+  {id:'loading',   n:'Loading',          c:'info == null',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly'; s.loading=true; }},
+  {id:'error',     n:'Load failed',      c:'error · info == null',
+   f:function(s){ s.baseExpiry=D(39); s.baseLabel='active'; s.currentPlan='monthly'; s.error=true; }}
+];
+function scenario(id){
+  current = id;
+  S = blankState();
+  cart = null;
+  const sc = SCENARIOS.filter(function(x){ return x.id === id; })[0];
+  if (sc) sc.f(S);
+  render();
+}
+function setRole(r){ S.role = r; render(); }
+function resetFlow(){
+  scenario(current);
+  toast('Reset — back to the start of this flow');
+}
+
+function sheetDev(){
+  const scenBtns = SCENARIOS.map(function(s){
+    return '<button class="' + (current === s.id ? 'on' : '') + '" onclick="scenario(\'' + s.id + '\')">' +
+      '<b>' + s.n + '</b><s>' + s.c + '</s></button>';
+  }).join('');
+
+  const roleBtns = [['owner','Shop owner'],['member','Team member']].map(function(r){
+    return '<button class="' + (S.role === r[0] ? 'on' : '') + '" onclick="setRole(\'' + r[0] + '\')">' + r[1] + '</button>';
+  }).join('');
+
+  const b = base(), t = team();
+  const cls = function(s){ return s === 'active' ? 'ok' : s === 'expired' ? 'bad' : s === 'suspended' ? 'wrn' : ''; };
+  const rows = [
+    ['now', fmt(S.now)],
+    ['subscription_expires_at', S.baseExpiry ? fmt(S.baseExpiry) : 'null'],
+    ['team_expires_at', S.teamExpiry ? fmt(S.teamExpiry) : 'null'],
+    ['team_seats', S.teamSeats],
+    ['active members', S.activeMembers],
+    ['→ base.status', b.status, cls(b.status)],
+    ['→ base.isPaidActive', b.isPaidActive, b.isPaidActive ? 'ok' : 'bad'],
+    ['→ base.daysLeft', b.daysLeft],
+    ['→ team.status', t.status, cls(t.status)],
+    ['→ team.isUsable', t.isUsable, t.isUsable ? 'ok' : 'bad']
+  ];
+  const inspector = rows.map(function(r){
+    return '<div class="kv"><span class="k">' + r[0] + '</span>' +
+           '<span class="v ' + (r[2] || '') + '">' + r[1] + '</span></div>';
+  }).join('');
+
+  const p = S.pending;
+  const admin = !p
+    ? '<div class="ah">Queue</div><div class="empty2">Nothing waiting. Send a payment from the screen ' +
+      'and it lands here — the same row the React panel shows at ' +
+      '<span class="mono">web/src/pages/Payments.jsx</span>.</div>'
+    : '<div class="ah"><span>Payment #' + p.id + '</span><span style="color:var(--wrn)">PENDING</span></div>' +
+      '<div class="li"><div class="t">' + S.shop.name + ' · ' + inr(p.amount) + '</div>' +
+        '<div class="d">' + adminRow(p) + '</div></div>' +
+      '<div class="ah" style="margin-top:2px">What confirming will do</div>' +
+      '<div class="li"><div class="d">' + confirmPreview(p) + '</div></div>' +
+      '<div class="arow"><button class="ap" onclick="adminConfirm()">Confirm</button>' +
+      '<button class="ar" onclick="adminReject()">Reject</button></div>';
+
+  return '<div class="grab"></div>' +
+    '<div class="sh"><div class="st">Prototype controls</div>' +
+      '<div class="ss">Scaffolding for testing — none of this exists in the real app.</div></div>' +
+    '<div class="sb devsb">' +
+      '<p class="tagline">A live state machine. Every derived value below is computed the way ' +
+        '<span class="mono">utils/subscription.js</span> computes it — expiry dates are the truth, ' +
+        'nothing is stored as &quot;expired&quot; or &quot;suspended&quot;.</p>' +
+      '<div class="lb">Scenario</div><div class="jp">' + scenBtns + '</div>' +
+      '<div class="lb">Derived state — read-only</div><div class="box">' + inspector + '</div>' +
+      '<div class="lb">Super admin · payment queue</div><div class="adm">' + admin + '</div>' +
+      '<div class="lb">Move the clock</div><div class="jp">' +
+        '<button onclick="travel(1)">+1 day</button><button onclick="travel(7)">+7 days</button>' +
+        '<button onclick="travel(30)">+30 days</button><button onclick="travel(400)">+400 days</button></div>' +
+      '<p class="note">Nothing writes &quot;expired&quot; or &quot;suspended&quot; anywhere. Move the clock and watch ' +
+        'both fall out of the dates on their own.</p>' +
+      '<div class="lb">Who is looking</div><div class="jp">' + roleBtns + '</div>' +
+      '<p class="note">The owner can pay their way out from inside the wall. A team member can only be ' +
+        'told who to ask.</p>' +
+    '</div>';
+}
+function adminRow(p){
+  const out = ['product   ' + p.product];
+  if (p.planKey)      out.push('plan      ' + p.planKey + ' · ' + inr(PLANS[p.planKey].price));
+  if (p.memberTarget) out.push('members   ' + p.memberTarget + ' × ' + inr(SEAT) + ' · ' + inr(p.memberTarget * SEAT));
+  out.push('seat_mode ' + p.seatMode);
+  out.push('proof     ' + (p.shot ? 'screenshot' : 'txn ' + (p.txn || '—')));
+  return out.join('\n');
+}
+function confirmPreview(p){
+  const out = [];
+  if (p.planKey)
+    out.push('plan    ' + (S.baseExpiry ? fmtS(S.baseExpiry) : '—') + ' → ' + fmtS(period(p.planKey, S.baseExpiry).to));
+  if (p.memberTarget > 0){
+    out.push('members ' + S.teamSeats + ' → ' + p.memberTarget + ' · to ' + fmtS(period(p.teamPlanKey, S.teamExpiry).to));
+    out.push('gate    against the NEW plan expiry');
+  }
+  if (p.membersPaid) out.push('members untouched — already paid');
+  return out.join('\n');
+}
+
+/* Closing the proof pane KEEPS the draft — that is the whole point of it. */
+$('scrim').addEventListener('click', function(e){
+  if (e.target.id !== 'scrim') return;
+  if (S.sheetKind === 'proof' && S.draft){
+    S.sheetKind = null; render();
+    toast('Saved — finish sending the proof whenever you are ready');
+    return;
+  }
+  closeSheet();
+});
+
+scenario('trial');
+</script>
